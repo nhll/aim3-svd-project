@@ -13,3 +13,9 @@ hs_err_pid*
 
 .idea
 *.iml
+/target/
+
+.DS_Store
+.classpath
+.project
+.settings/
