@@ -22,12 +22,8 @@ public class SVD {
     // Parse each line of the input file to a tuple of (rowIndex, list(rowValues)).
     DataSet<Tuple2<Long, Double[]>> matrix = inputMatrix.map(new MatrixReader());
 
-    // TODO: Using a reduce operator on the ungrouped data set, convert all (rowIndex, list(rowValues)) tuples into a
-    // single matrix instance. Implement custom Matrix class for this?
-    MatrixWritable A = new MatrixWritable();
-
     // Apply the Lanczos algorithm to our input matrix and collect the result.
-    LanczosResult lanczosResult = Lanczos.process(A, LANCZOS_ITERATIONS);
+    LanczosResult lanczosResult = Lanczos.process(matrix, LANCZOS_ITERATIONS);
 
     // Extract the tridiagonal matrix and the matrix containing all Lanczos vectors from the result.
     MatrixWritable Tmm = lanczosResult.getTmm();
