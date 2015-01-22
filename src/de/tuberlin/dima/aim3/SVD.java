@@ -11,7 +11,7 @@ import org.apache.mahout.math.MatrixWritable;
 
 public class SVD {
 
-  private static final long LANCZOS_ITERATIONS = 500;
+  private static final int LANCZOS_ITERATIONS = 500;
 
   public static void main(String[] args) throws Exception {
     ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
