@@ -12,8 +12,8 @@ public class MatrixReader implements MapFunction<String, Tuple2<Integer, Double[
     Integer rowIndex = new Integer(tokens[0]);
     Double[] rowVec = new Double[tokens.length - 1];
     // TODO: Is an integer index enough?
-    for (int i = 0; i < tokens.length; i++) {
-      rowVec[i] = new Double(tokens[i]);
+    for (int i = 1; i < tokens.length; i++) {
+      rowVec[i - 1] = new Double(tokens[i]);
     }
     return new Tuple2<Integer, Double[]>(rowIndex, rowVec);
   }

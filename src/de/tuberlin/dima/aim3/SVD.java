@@ -9,17 +9,18 @@ import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.mahout.math.MatrixWritable;
 
+import java.io.File;
 import java.util.ArrayList;
 
 public class SVD {
 
-  private static final int LANCZOS_ITERATIONS = 500;
+  private static final int LANCZOS_ITERATIONS = 2;
 
   public static void main(String[] args) throws Exception {
     ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
     // Read the text file containing the input matrix line by line.
-    DataSource<String> inputMatrix = env.readTextFile("data/test1.matrix");
+    DataSource<String> inputMatrix = env.readTextFile(new File("data/test1.matrix").getAbsolutePath());
 
     // Parse each line of the input file to a tuple of (rowIndex, list(rowValues)).
     DataSet<Tuple2<Integer, Double[]>> matrix = inputMatrix.map(new MatrixReader());
