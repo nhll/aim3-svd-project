@@ -6,7 +6,7 @@ Vector
 ------
 
 For distribution: Collection/data set of (index, value) tuples
-    --> DataSet<Tuple2<Long, Double>>
+    --> DataSet<Tuple2<Integer, Double>>
 
 For processing: Array of values, as this also contains index information
     --> Double[]
@@ -16,7 +16,7 @@ Matrix
 ------
 
 For distribution: Collection/data set of (rowIndex/colIndex, vector)
-    --> DataSet<Tuple2<Long, Double[]>>
+    --> DataSet<Tuple2<Integer, Double[]>>
 
 For processing: Array of row vectors or column vectors
     --> Double[Double[]]
