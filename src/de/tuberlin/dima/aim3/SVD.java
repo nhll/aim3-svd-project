@@ -9,6 +9,8 @@ import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.mahout.math.MatrixWritable;
 
+import java.util.ArrayList;
+
 public class SVD {
 
   private static final int LANCZOS_ITERATIONS = 500;
@@ -17,10 +19,10 @@ public class SVD {
     ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
     // Read the text file containing the input matrix line by line.
-    DataSource<String> inputMatrix = env.readTextFile("path/to/input/matrix");
+    DataSource<String> inputMatrix = env.readTextFile("data/test1.matrix");
 
     // Parse each line of the input file to a tuple of (rowIndex, list(rowValues)).
-    DataSet<Tuple2<Long, Double[]>> matrix = inputMatrix.map(new MatrixReader());
+    DataSet<Tuple2<Integer, Double[]>> matrix = inputMatrix.map(new MatrixReader());
 
     // Apply the Lanczos algorithm to our input matrix and collect the result.
     LanczosResult lanczosResult = Lanczos.process(matrix, LANCZOS_ITERATIONS);
