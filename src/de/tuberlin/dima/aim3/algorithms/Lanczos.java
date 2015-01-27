@@ -8,9 +8,12 @@ import de.tuberlin.dima.aim3.operators.VectorIndexFilter;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.core.fs.FileSystem;
 import org.apache.mahout.math.MatrixWritable;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Random;
 
 public final class Lanczos {
 
@@ -29,14 +32,18 @@ public final class Lanczos {
     ArrayList<Tuple2<Integer, Double[]>> vList = new ArrayList<Tuple2<Integer, Double[]>>();
     ArrayList<Tuple2<Integer, Double[]>> wList = new ArrayList<Tuple2<Integer, Double[]>>();
 
-    // Prepare a 0-vector with m elements.
-    Double[] zeroVector = new Double[m];
-    for (int i = 0; i < m; i++) {
+    // Prepare a 0-vector and a random vector, each with as many elements as the matrix has rows.
+    Double[] zeroVector = new Double[3];
+    Double[] randVector = new Double[3];
+    Random rand = new Random();
+    for (int i = 0; i < 3; i++) {
       zeroVector[i] = 0.0;
+//      randVector[i] = rand.nextDouble();
+      randVector[i] = new Double(i + 1);
     }
 
     vList.add(0, new Tuple2<Integer, Double[]>(0, zeroVector)); // v[0] <-- 0-vector
-    vList.add(1, new Tuple2<Integer, Double[]>(1, zeroVector)); // TODO: Use random vector with norm 1 instead!
+    vList.add(1, new Tuple2<Integer, Double[]>(1, randVector)); // TODO: Use random vector with norm 1 instead!
     bList.add(0, new Tuple2<Integer, Double>(0, 0.0));
     bList.add(1, new Tuple2<Integer, Double>(1, 0.0));
 
@@ -69,7 +76,11 @@ public final class Lanczos {
       DataSet<Tuple2<Integer, Double[]>> wj = A.groupBy(0).reduceGroup(new DotProduct())
                                                .withBroadcastSet(vj, "otherVector")
                                                .reduceGroup(new VectorElementsToSingleVector(j));
+      // TODO: Is union the right operation here? We just want to append wj to w!
       w = w.union(wj);
+
+      vj.writeAsText(new File("data/out/v" + j + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+      wj.writeAsText(new File("data/out/w" + j + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
 
       // TODO: a[j]   <-- w[j] * v[j]
       // TODO: w[j]   <-- w[j] - a[j] * v[j] - b[j] * v[j-1]
@@ -79,7 +90,7 @@ public final class Lanczos {
       // TODO: If v[j+1] is not orthogonal to v[j] OR v[j+1] already exists in v, mark v[j+1] as "spurious".
     }
 
-    w.writeAsText("data/w.out");
+    w.writeAsText(new File("data/out/w.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
 
     // TODO: wm <-- A  * vm
     // TODO: am <-- wm * vm
