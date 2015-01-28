@@ -10,7 +10,6 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.mahout.math.MatrixWritable;
 
 import java.io.File;
-import java.util.ArrayList;
 
 public class SVD {
 
