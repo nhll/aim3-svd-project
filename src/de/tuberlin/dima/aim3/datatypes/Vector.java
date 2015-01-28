@@ -308,7 +308,7 @@ public class Vector {
     for (int i = 0; i < elements.size(); i++) {
       valueStrings[i] = String.format("%.2f", elements.get(i));
     }
-    return "[ " + StringUtils.join(", ", valueStrings) + " ]";
+    return "[" + StringUtils.join(", ", valueStrings) + "]";
   }
 
 }
