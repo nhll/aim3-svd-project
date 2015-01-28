@@ -48,18 +48,8 @@ public class Vector<T> {
   }
 
   /**
-   * Constructs a vector that's not part of a matrix from a list of values that the vector should contain. Using this
-   * constructor, the vector's index will be set to Vector.NOINDEX.
-   *
-   * @param elements A list of the vector's values
-   */
-  public Vector (List<T> elements) {
-    this(elements, NOINDEX);
-  }
-
-  /**
-   * Same as {@link #Vector(java.util.List)}, but for constructing a vector that's part of a matrix and thus has a row
-   * or column index.
+   * Constructs a vector that's part of a matrix from a list of values that should be the vector's elements. The vector
+   * being part of a matrix means that it will have an index value representing its position in the matrix.
    *
    * @param elements A list of the vector's values
    * @param index    The vector's row or column index in the matrix
@@ -70,17 +60,19 @@ public class Vector<T> {
   }
 
   /**
-   * Same as {@link #Vector(java.util.List)}, but takes a set of VectorElement objects instead of a list of values.
+   * Same as {@link #Vector(java.util.List, int)}, but for constructing a vector that's not part of a matrix and thus
+   * does not have an index value. Using this constructor, the vector's index will be set to
+   * {@link #NOINDEX Vector.NOINDEX}.
    *
-   * @param elements A set of VectorElement objects representing the vector's values
+   * @param elements A list of the vector's values
    */
-  public Vector (Set<VectorElement<T>> elements) {
+  public Vector (List<T> elements) {
     this(elements, NOINDEX);
   }
 
   /**
-   * Same as {@link #Vector(java.util.Set)}, but for constructing a vector that's part of a matrix and thus has a row or
-   * column index.
+   * Same as {@link #Vector(java.util.List, int)}, but takes a set of VectorElement instances instead of a list of
+   * values.
    *
    * @param elements A set of VectorElement objects representing the vector's values
    * @param index    The vector's row or column index in the matrix
@@ -91,6 +83,16 @@ public class Vector<T> {
     for (VectorElement<T> element : elements) {
       this.elements.add(element.getIndex(), element.getValue());
     }
+  }
+
+  /**
+   * Same as {@link #Vector(java.util.Set)}, but for constructing a vector that's not part of a matrix and thus does
+   * not have an index value. Using this constructor, the vector's index will be set to {@link #NOINDEX Vector.NOINDEX}.
+   *
+   * @param elements A set of VectorElement objects representing the vector's values
+   */
+  public Vector (Set<VectorElement<T>> elements) {
+    this(elements, NOINDEX);
   }
 
   /**
