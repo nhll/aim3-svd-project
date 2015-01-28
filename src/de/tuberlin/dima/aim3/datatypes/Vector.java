@@ -103,15 +103,6 @@ public class Vector<T> {
   }
 
   /**
-   * @param index The value that this vector's index should be set to
-   * @return A reference to this vector in order to allow for method chaining
-   */
-  public Vector<T> setIndex(int index) {
-    this.index = index;
-    return this;
-  }
-
-  /**
    * @return The number of elements that are contained in this vector
    */
   public int getSize() {
