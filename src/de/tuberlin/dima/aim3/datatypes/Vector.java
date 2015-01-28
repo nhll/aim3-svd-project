@@ -10,15 +10,15 @@ public class Vector {
   public static final int NOINDEX = -1;
 
   private int index;
-  private ArrayList<Double> values;
+  private ArrayList<Double> elements;
 
-  public Vector (ArrayList<Double> values) {
-    this(values, NOINDEX);
+  public Vector (ArrayList<Double> elements) {
+    this(elements, NOINDEX);
   }
 
-  public Vector (ArrayList<Double> values, int index) {
+  public Vector (ArrayList<Double> elements, int index) {
     this.index = index;
-    this.values = values;
+    this.elements = elements;
   }
 
   /**
@@ -29,19 +29,19 @@ public class Vector {
   }
 
   /**
-   * @return The number of values that are contained in this vector
+   * @return The number of elements that are contained in this vector
    */
   public int getSize() {
-    return values.size();
+    return elements.size();
   }
 
   /**
    * @return A String representing this vector
    */
   public String toString() {
-    String[] valueStrings = new String[values.size()];
-    for (int i = 0; i < values.size(); i++) {
-      valueStrings[i] = values.get(i).toString();
+    String[] valueStrings = new String[elements.size()];
+    for (int i = 0; i < elements.size(); i++) {
+      valueStrings[i] = elements.get(i).toString();
     }
     return "[ " + StringUtils.join(", ", valueStrings) + " ]";
   }
