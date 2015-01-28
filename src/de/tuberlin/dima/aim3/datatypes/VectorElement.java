@@ -73,7 +73,7 @@ public class VectorElement {
    * @return A string representation of this vector element
    */
   public String toString() {
-    return String.format("(%d, %.2f)", index, value);
+    return String.format("(%d, %.4f)", index, value);
   }
 
 }
