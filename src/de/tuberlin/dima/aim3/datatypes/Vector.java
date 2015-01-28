@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+// TODO: Implement vector algebra
 // TODO: Class documentation comment
 public class Vector<T> {
 
