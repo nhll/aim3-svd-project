@@ -306,7 +306,7 @@ public class Vector {
   public String toString() {
     String[] valueStrings = new String[elements.size()];
     for (int i = 0; i < elements.size(); i++) {
-      valueStrings[i] = elements.get(i).toString();
+      valueStrings[i] = String.format("%.2f", elements.get(i));
     }
     return "[ " + StringUtils.join(", ", valueStrings) + " ]";
   }
