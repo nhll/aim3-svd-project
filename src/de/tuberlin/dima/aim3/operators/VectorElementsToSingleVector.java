@@ -1,5 +1,7 @@
 package de.tuberlin.dima.aim3.operators;
 
+import de.tuberlin.dima.aim3.datatypes.Vector;
+import de.tuberlin.dima.aim3.datatypes.VectorElement;
 import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.util.Collector;
@@ -9,44 +11,29 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-public class VectorElementsToSingleVector implements GroupReduceFunction<Tuple2<Integer, Double>,
-                                                                         Tuple2<Integer, Double[]>> {
+public class VectorElementsToSingleVector implements GroupReduceFunction<VectorElement, Vector> {
 
   private int vectorIndex;
-
-  private VectorElementsToSingleVector() {
-    // Default constructor is not allowed...
-  }
 
   public VectorElementsToSingleVector(int vectorIndex) {
     this.vectorIndex = vectorIndex;
   }
 
+  public VectorElementsToSingleVector() {
+    this(Vector.NOINDEX);
+  }
+
   @Override
-  public void reduce(Iterable<Tuple2<Integer, Double>> elements, Collector<Tuple2<Integer, Double[]>> out)
-      throws IndexOutOfBoundsException {
-
-    // First, store the elements in a hash map, mapping each value to its position (index) in the vector.
-    HashMap<Integer, Double> values = new HashMap<Integer, Double>();
-    for (Tuple2<Integer, Double> element : elements) {
-      values.put(element.f0, element.f1);
-    }
-
-    // Now that we know how many values we have, create a double array representing the vector and store each value in
-    // the set at the corresponding vector position.
-    Double[] vector = new Double[values.size()];
-    for (Map.Entry<Integer, Double> entry : values.entrySet()) {
-      int valueIndex = entry.getKey();
-      double value = entry.getValue();
-
-      // Check if the index is actually valid. Safety first!
-      if (valueIndex >= vector.length) {
-        throw new IndexOutOfBoundsException("Value index " + valueIndex + " is out of bounds!");
+  public void reduce(Iterable<VectorElement> elements, Collector<Vector> out) {
+    // Store all vector elements in a set and then emit a new vector created from that set.
+    HashSet<VectorElement> elementSet = new HashSet<VectorElement>();
+    for (VectorElement element : elements) {
+      if (elementSet.add(element)) {
+        System.out.println("Element " + element + " added to set!");
+      } else {
+        System.out.println("Element " + element + " already contained in set!");
       }
-
-      vector[valueIndex] = value;
     }
-
-    out.collect(new Tuple2<Integer, Double[]>(vectorIndex, vector));
+    out.collect(new Vector(elementSet, vectorIndex));
   }
 }
