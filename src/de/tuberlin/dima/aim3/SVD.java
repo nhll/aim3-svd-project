@@ -1,13 +1,11 @@
 package de.tuberlin.dima.aim3;
 
 import de.tuberlin.dima.aim3.algorithms.Lanczos;
-import de.tuberlin.dima.aim3.datatypes.LanczosResult;
 import de.tuberlin.dima.aim3.datatypes.Vector;
 import de.tuberlin.dima.aim3.operators.MatrixReader;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
-import org.apache.mahout.math.MatrixWritable;
 
 import java.io.File;
 
