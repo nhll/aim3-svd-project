@@ -2,7 +2,6 @@ package de.tuberlin.dima.aim3.operators;
 
 import de.tuberlin.dima.aim3.datatypes.Vector;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.util.ArrayList;
 

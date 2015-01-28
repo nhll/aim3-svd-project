@@ -2,13 +2,8 @@ package de.tuberlin.dima.aim3.operators;
 
 import de.tuberlin.dima.aim3.datatypes.Vector;
 import de.tuberlin.dima.aim3.datatypes.VectorElement;
-import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.common.functions.RichGroupReduceFunction;
-import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.util.Collector;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class DotProduct extends RichGroupReduceFunction<Vector, VectorElement> {
 

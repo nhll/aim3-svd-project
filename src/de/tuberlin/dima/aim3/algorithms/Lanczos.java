@@ -1,20 +1,14 @@
 package de.tuberlin.dima.aim3.algorithms;
 
-import de.tuberlin.dima.aim3.datatypes.LanczosResult;
-import de.tuberlin.dima.aim3.datatypes.Vector;
-import de.tuberlin.dima.aim3.operators.DotProduct;
-import de.tuberlin.dima.aim3.operators.RejectAll;
-import de.tuberlin.dima.aim3.operators.VectorElementsToSingleVector;
-import de.tuberlin.dima.aim3.operators.VectorIndexFilter;
+import de.tuberlin.dima.aim3.datatypes.*;
+import de.tuberlin.dima.aim3.operators.*;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.fs.FileSystem;
-import org.apache.mahout.math.MatrixWritable;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Random;
 
 public final class Lanczos {
 
