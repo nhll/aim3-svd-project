@@ -5,10 +5,10 @@ package de.tuberlin.dima.aim3.datatypes;
  * wrapper for the vector element's value as well as the position of that value in the corresponding vector in the form
  * of an index.
  */
-public class VectorElement<T> {
+public class VectorElement {
 
   private int index;
-  private T value;
+  private double value;
 
   /**
    * Constructs a new vector element with the provided index and value.
@@ -16,9 +16,17 @@ public class VectorElement<T> {
    * @param index The element's position in the corresponding vector, starting from 0
    * @param value The element's value
    */
-  public VectorElement(int index, T value) {
+  public VectorElement(int index, double value) {
     this.index = index;
     this.value = value;
+  }
+
+  /**
+   * Default constructor needed by Flink to be able to work with this class. Creates a new vector element with value 0.0
+   * and index {@link Vector#NOINDEX}.
+   */
+  public VectorElement() {
+    this(Vector.NOINDEX, 0.0);
   }
 
   /**
@@ -29,23 +37,43 @@ public class VectorElement<T> {
   }
 
   /**
+   * @param index This vector element's new index
+   */
+  public void setIndex(int index) {
+    this.index = index;
+  }
+
+  /**
    * @return The element's value
    */
-  public T getValue() {
+  public double getValue() {
     return value;
   }
 
   /**
-   * Checks this vector element for equality to another vector element. Two vector elements are equal if their indices
-   * and their values are the same. This method is needed to ensure that sets of vector elements can't contain the same
-   * vector element more than once.
-   *
-   * @param other The other vector element to compare this one to
-   * @return {@code true} if both vector elements are equal, {@code false} otherwise
+   * @param value This vector element's new value
    */
-  public boolean equals(VectorElement<T> other) {
-    return index == other.index &&
-           value == other.value;
+  public void setValue(double value) {
+    this.value = value;
+  }
+
+  /**
+   * Generates a hash code that (hopefully) uniquely identifies this vector element. This method is internally used by
+   * {@link java.util.HashSet} to ensure that no duplicate values exist in the same set. Without overloading this
+   * method, working with hash sets of vector elements is not fun.
+   *
+   * @return A hash code that uniquely identifies this vector element
+   */
+  @Override
+  public int hashCode() {
+    return Integer.toString(index).concat(Double.toString(value)).hashCode();
+  }
+
+  /**
+   * @return A string representation of this vector element
+   */
+  public String toString() {
+    return "( " + index + ", " + value + " )";
   }
 
 }
