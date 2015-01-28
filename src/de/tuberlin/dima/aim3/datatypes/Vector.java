@@ -17,6 +17,37 @@ public class Vector<T> {
   private List<T> elements;
 
   /**
+   * Constructs and returns a new zero vector of type U (all elements set to 0) that is part of a matrix and thus has an
+   * index. Only supports types that an Integer value can be casted to, e.g. Double, Long, ...
+   *
+   * @param size  The zero vector's number of elements
+   * @param index The zero vector's index in the corresponding matrix
+   * @param clazz The Class of the zero vector's type U (e.g. Double.class for a zero vector of type Double)
+   * @param <U>   The zero vector's type (the type of all its elements, e.g. Double)
+   * @return A new vector of type U, of the specified size and with the specified index, with all elements set to 0
+   */
+  public static <U> Vector<U> getZeroVector(int size, int index, Class<U> clazz) {
+    ArrayList<U> elements = new ArrayList<U>();
+    for (int i = 0; i < size; i++) {
+      elements.add(i, clazz.cast(0));
+    }
+    return new Vector<U>(elements, index);
+  }
+
+  /**
+   * Same as {@link #getZeroVector(int, int, Class)}, but for zero vectors that are not part of a matrix and thus do not
+   * have an index. The resulting zero vector's index will be set to Vector.NOINDEX.
+   *
+   * @param size  The zero vector's number of elements
+   * @param clazz The Class of the zero vector's type U (e.g. Double.class for a zero vector of type Double)
+   * @param <U>   The zero vector's type (the type of all its elements, e.g. Double)
+   * @return A new vector of type U and of the specified size with all elements set to 0
+   */
+  public static <U> Vector<U> getZeroVector(int size, Class<U> clazz) {
+    return getZeroVector(size, NOINDEX, clazz);
+  }
+
+  /**
    * Constructs a vector that's not part of a matrix from a list of values that the vector should contain. Using this
    * constructor, the vector's index will be set to Vector.NOINDEX.
    *
