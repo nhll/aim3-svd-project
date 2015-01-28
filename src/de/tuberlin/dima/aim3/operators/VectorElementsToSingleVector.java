@@ -23,11 +23,7 @@ public class VectorElementsToSingleVector implements GroupReduceFunction<VectorE
     // Store all vector elements in a set and then emit a new vector created from that set.
     HashSet<VectorElement> elementSet = new HashSet<VectorElement>();
     for (VectorElement element : elements) {
-      if (elementSet.add(element)) {
-        System.out.println("Element " + element + " added to set!");
-      } else {
-        System.out.println("Element " + element + " already contained in set!");
-      }
+      elementSet.add(element);
     }
     out.collect(new Vector(elementSet, vectorIndex));
   }
