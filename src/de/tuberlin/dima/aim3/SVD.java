@@ -8,12 +8,16 @@ import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
 
 import java.io.File;
+import java.util.Locale;
 
 public class SVD {
 
   private static final int LANCZOS_ITERATIONS = 2;
 
   public static void main(String[] args) throws Exception {
+    // Set default locale to US so that double values are displayed with a dot instead of a comma.
+    Locale.setDefault(Locale.US);
+
     ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
     // Read the text file containing the input matrix line by line.
