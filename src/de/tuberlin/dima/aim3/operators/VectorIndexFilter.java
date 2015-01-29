@@ -5,14 +5,14 @@ import org.apache.flink.api.common.functions.FilterFunction;
 
 public class VectorIndexFilter implements FilterFunction<Vector> {
 
-  private int index;
+    private int index;
 
-  public VectorIndexFilter(int index) {
-    this.index = index;
-  }
+    public VectorIndexFilter(int index) {
+        this.index = index;
+    }
 
-  @Override
-  public boolean filter(Vector vector) throws Exception {
-    return vector.getIndex() == index;
-  }
+    @Override
+    public boolean filter(Vector vector) throws Exception {
+        return vector.getIndex() == index;
+    }
 }

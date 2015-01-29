@@ -7,14 +7,14 @@ import java.util.ArrayList;
 
 public class MatrixReader implements MapFunction<String, Vector> {
 
-  @Override
-  public Vector map(String row) {
-    String[] tokens = row.split("\\s+");
-    Integer rowIndex = new Integer(tokens[0]);
-    ArrayList<Double> rowVec = new ArrayList<Double>();
-    for (int i = 1; i < tokens.length; i++) {
-      rowVec.add(i - 1, new Double(tokens[i]));
+    @Override
+    public Vector map(String row) {
+        String[] tokens = row.split("\\s+");
+        Integer rowIndex = new Integer(tokens[0]);
+        ArrayList<Double> rowVec = new ArrayList<Double>();
+        for (int i = 1; i < tokens.length; i++) {
+            rowVec.add(i - 1, new Double(tokens[i]));
+        }
+        return new Vector(rowVec, rowIndex);
     }
-    return new Vector(rowVec, rowIndex);
-  }
 }
