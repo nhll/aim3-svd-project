@@ -4,8 +4,8 @@ import org.apache.flink.api.common.functions.FilterFunction;
 
 public class RejectAll<T> implements FilterFunction<T> {
 
-  @Override
-  public boolean filter(T elem) {
-    return false;
-  }
+    @Override
+    public boolean filter(T elem) {
+        return false;
+    }
 }
