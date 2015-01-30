@@ -21,8 +21,6 @@ public class VectorScalarMultiplication extends RichGroupReduceFunction<Vector, 
     @Override
     public void reduce(Iterable<Vector> vectors, Collector<Vector> out) {
         double scalar = getRuntimeContext().<VectorElement>getBroadcastVariable("scalar").get(0).getValue();
-        for (Vector vector : vectors) {
-            out.collect(vector.times(scalar));
-        }
+        vectors.forEach(vector -> out.collect(vector.times(scalar)));
     }
 }

@@ -20,10 +20,10 @@ public final class Lanczos {
     public static void process(DataSet<Vector> A, int m) {
         ExecutionEnvironment env = A.getExecutionEnvironment();
 
-        List<VectorElement> aList = new ArrayList<VectorElement>();
-        List<VectorElement> bList = new ArrayList<VectorElement>();
-        List<Vector> vList = new ArrayList<Vector>();
-        List<Vector> wList = new ArrayList<Vector>();
+        List<VectorElement> aList = new ArrayList<>();
+        List<VectorElement> bList = new ArrayList<>();
+        List<Vector> vList = new ArrayList<>();
+        List<Vector> wList = new ArrayList<>();
 
         vList.add(Vector.getZeroVector(3, 0));      // v[0] <-- 0-vector
         vList.add(Vector.getRandomVector(3, 1, 1)); // v[1] <-- Random vector with norm 1
@@ -37,20 +37,19 @@ public final class Lanczos {
 
         // Convert everything to data sets. For a and w, use the RejectAll filter to produce empty DataSets by filtering
         // out all elements.
-        DataSet<VectorElement> a = env.fromCollection(aList).filter(new RejectAll<VectorElement>());
+        DataSet<VectorElement> a = env.fromCollection(aList).filter(new RejectAll<>());
         DataSet<VectorElement> b = env.fromCollection(bList);
         DataSet<Vector> v = env.fromCollection(vList);
-        DataSet<Vector> w = env.fromCollection(wList).filter(new RejectAll<Vector>());
+        DataSet<Vector> w = env.fromCollection(wList).filter(new RejectAll<>());
 
         for (int j = 1; j < m; j++) {
             // Get vj by filtering out all v vectors with an index != j.
-            DataSet<Vector> vj = v.filter(new IndexFilter<Vector>(j));
+            DataSet<Vector> vj = v.filter(new IndexFilter<>(j));
 
             // w[j] <-- A * v[j]
             DataSet<Vector> wj = A.groupBy("index").reduceGroup(new DotProduct())
                                   .withBroadcastSet(vj, "otherVector")
                                   .reduceGroup(new VectorElementsToSingleVector(j));
-            // Don't append wj to w yet because it will be modified again later in this iteration.
 
             // a[j] <-- w[j] * v[j]
             DataSet<VectorElement> aj = wj.reduceGroup(new DotProduct())
@@ -60,6 +59,10 @@ public final class Lanczos {
             // TODO: w[j]   <-- w[j] - a[j] * v[j] - b[j] * v[j-1]
             DataSet<Vector> ajvj = vj.reduceGroup(new VectorScalarMultiplication())
                                      .withBroadcastSet(aj, "scalar");
+            DataSet<Vector> previousVj = v.filter(new IndexFilter<>(j - 1));
+            DataSet<VectorElement> bj = b.filter(new IndexFilter<>(j));
+            DataSet<Vector> bjPreviousVj = previousVj.reduceGroup(new VectorScalarMultiplication())
+                                                     .withBroadcastSet(bj, "scalar");
             w = w.union(wj);
 
             // TODO: b[j+1] <-- l2norm(w[j])

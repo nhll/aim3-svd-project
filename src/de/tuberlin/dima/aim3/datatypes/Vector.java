@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 // TODO: Implement vector algebra
 // TODO: Class documentation comment
@@ -25,10 +26,8 @@ public class Vector implements Indexed {
      * @return A new vector of the specified size and with the specified index, with all elements set to 0
      */
     public static Vector getZeroVector(int size, int index) {
-        ArrayList<Double> elements = new ArrayList<Double>();
-        for (int i = 0; i < size; i++) {
-            elements.add(i, 0.0);
-        }
+        ArrayList<Double> elements = new ArrayList<>();
+        IntStream.range(0, size).forEach(i -> elements.add(i, 0.0));
         return new Vector(elements, index);
     }
 
@@ -56,11 +55,9 @@ public class Vector implements Indexed {
      * @see #scaleTo(double)
      */
     public static Vector getRandomVector(int size, double norm, int index) {
-        ArrayList<Double> elements = new ArrayList<Double>();
+        ArrayList<Double> elements = new ArrayList<>();
         Random r = new Random();
-        for (int i = 0; i < size; i++) {
-            elements.add(i, r.nextDouble());
-        }
+        IntStream.range(0, size).forEach(i -> elements.add(i, r.nextDouble()));
         return new Vector(elements, index).scaleTo(norm);
     }
 
@@ -113,26 +110,10 @@ public class Vector implements Indexed {
      */
     public Vector(Set<VectorElement> elements, int index) {
         this.index = index;
-
-        // For safety purposes, create a new list with as many 0.0 values as there are vector elements in the set. This
-        // way, the order in which the elements in the set get inserted into the list doesn't matter and we're not
-        // running the risk of producing an IndexOutOfBoundsException. Of course this can still happen if the indices
-        // are corrupted.
-        ArrayList<Double> elementList = new ArrayList<Double>();
-        for (int i = 0; i < elements.size(); i++) {
-            elementList.add(i, 0.0);
-        }
-
-        // Insert the set's vector elements into the list, making sure that all the indices are actually valid.
-        for (VectorElement element : elements) {
-            int elementIndex = element.getIndex();
-            if (elementIndex < elementList.size()) {
-                elementList.set(elementIndex, element.getValue());
-            } else {
-                throw new IndexOutOfBoundsException("Index: " + elementIndex + ", Size: " + elementList.size());
-            }
-        }
-        this.elements = elementList;
+        // First add as many 0.0 values to this vector's element list as there are elements in the provided list. Then
+        // copy each provided element into this vector's element list.
+        IntStream.range(0, elements.size()).forEach(i -> this.elements.add(i, 0.0));
+        elements.forEach(element -> this.elements.set(element.getIndex(), element.getValue()));
     }
 
     /**
@@ -216,10 +197,7 @@ public class Vector implements Indexed {
      * @return The p-norm of this vector
      */
     public double norm(int p) {
-        double sumOfPowers = 0;
-        for (double element : elements) {
-            sumOfPowers += Math.pow(element, p);
-        }
+        double sumOfPowers = elements.stream().reduce(0.0, (element, base) -> base + Math.pow(element, p));
         return Math.pow(sumOfPowers, (double) 1 / p);
     }
 
@@ -245,6 +223,20 @@ public class Vector implements Indexed {
      */
     public Vector scaleTo(double norm) {
         return norm == Double.NaN ? new Vector(this) : this.divideBy(this.norm()).times(norm);
+    }
+
+    public Vector minus(Vector other) throws IllegalArgumentException {
+        int size = size();
+        if (size != other.size()) {
+            throw new IllegalArgumentException("Vector sizes don't match!");
+        }
+
+        List<Double> otherElements = other.getElements();
+        List<Double> resultingElements = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            resultingElements.add(i, elements.get(i) - otherElements.get(i));
+        }
+        return new Vector(resultingElements);
     }
 
     /**
@@ -277,10 +269,8 @@ public class Vector implements Indexed {
      * @return A new vector resulting from the multiplication of this vector by x
      */
     public Vector times(double x) {
-        ArrayList<Double> multipliedElements = new ArrayList<Double>();
-        for (Double element : elements) {
-            multipliedElements.add(element * x);
-        }
+        ArrayList<Double> multipliedElements = new ArrayList<>();
+        elements.forEach(element -> multipliedElements.add(element * x));
         return new Vector(multipliedElements, index);
     }
 
@@ -292,10 +282,8 @@ public class Vector implements Indexed {
      * @return A new vector resulting from the division of this vector by x
      */
     public Vector divideBy(double x) {
-        ArrayList<Double> dividedElements = new ArrayList<Double>();
-        for (Double element : elements) {
-            dividedElements.add(element / x);
-        }
+        ArrayList<Double> dividedElements = new ArrayList<>();
+        elements.forEach(element -> dividedElements.add(element / x));
         return new Vector(dividedElements, index);
     }
 

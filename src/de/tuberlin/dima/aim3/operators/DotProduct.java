@@ -10,11 +10,6 @@ public class DotProduct extends RichGroupReduceFunction<Vector, VectorElement> {
     @Override
     public void reduce(Iterable<Vector> vectors, Collector<VectorElement> out) throws IllegalArgumentException {
         Vector other = getRuntimeContext().<Vector>getBroadcastVariable("otherVector").get(0);
-        for (Vector vector : vectors) {
-            if (vector.size() != other.size()) {
-                throw new IllegalArgumentException("Vector sizes don't match!");
-            }
-            out.collect(new VectorElement(vector.getIndex(), vector.dot(other)));
-        }
+        vectors.forEach(vector -> out.collect(new VectorElement(vector.getIndex(), vector.dot(other))));
     }
 }
