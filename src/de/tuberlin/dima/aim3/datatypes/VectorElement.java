@@ -5,7 +5,7 @@ package de.tuberlin.dima.aim3.datatypes;
  * wrapper for the vector element's value as well as the position of that value in the corresponding vector in the form
  * of an index.
  */
-public class VectorElement {
+public class VectorElement implements Indexed {
 
     private int index;
     private double value;
