@@ -22,10 +22,8 @@ public class VectorElementsToSingleVector implements GroupReduceFunction<VectorE
     @Override
     public void reduce(Iterable<VectorElement> elements, Collector<Vector> out) {
         // Store all vector elements in a set and then emit a new vector created from that set.
-        HashSet<VectorElement> elementSet = new HashSet<VectorElement>();
-        for (VectorElement element : elements) {
-            elementSet.add(element);
-        }
+        HashSet<VectorElement> elementSet = new HashSet<>();
+        elements.forEach(elementSet::add);
         out.collect(new Vector(elementSet, vectorIndex));
     }
 }
