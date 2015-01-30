@@ -2,10 +2,7 @@ package de.tuberlin.dima.aim3.algorithms;
 
 import de.tuberlin.dima.aim3.datatypes.Vector;
 import de.tuberlin.dima.aim3.datatypes.VectorElement;
-import de.tuberlin.dima.aim3.operators.DotProduct;
-import de.tuberlin.dima.aim3.operators.RejectAll;
-import de.tuberlin.dima.aim3.operators.VectorElementsToSingleVector;
-import de.tuberlin.dima.aim3.operators.IndexFilter;
+import de.tuberlin.dima.aim3.operators.*;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.core.fs.FileSystem;
@@ -61,6 +58,8 @@ public final class Lanczos {
             a = a.union(aj);
 
             // TODO: w[j]   <-- w[j] - a[j] * v[j] - b[j] * v[j-1]
+            DataSet<Vector> ajvj = vj.reduceGroup(new VectorScalarMultiplication())
+                                     .withBroadcastSet(aj, "scalar");
             w = w.union(wj);
 
             // TODO: b[j+1] <-- l2norm(w[j])
@@ -73,6 +72,7 @@ public final class Lanczos {
             vj.writeAsText(new File("data/out/v" + j + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
             wj.writeAsText(new File("data/out/w" + j + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
             aj.writeAsText(new File("data/out/a" + j + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            ajvj.writeAsText(new File("data/out/ajvj" + j + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
         }
 
         w.writeAsText(new File("data/out/w.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
