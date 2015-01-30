@@ -5,7 +5,7 @@ import de.tuberlin.dima.aim3.datatypes.VectorElement;
 import de.tuberlin.dima.aim3.operators.DotProduct;
 import de.tuberlin.dima.aim3.operators.RejectAll;
 import de.tuberlin.dima.aim3.operators.VectorElementsToSingleVector;
-import de.tuberlin.dima.aim3.operators.VectorIndexFilter;
+import de.tuberlin.dima.aim3.operators.IndexFilter;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.core.fs.FileSystem;
@@ -47,7 +47,7 @@ public final class Lanczos {
 
         for (int j = 1; j < m; j++) {
             // Get vj by filtering out all v vectors with an index != j.
-            DataSet<Vector> vj = v.filter(new VectorIndexFilter(j));
+            DataSet<Vector> vj = v.filter(new IndexFilter<Vector>(j));
 
             // w[j] <-- A * v[j]
             DataSet<Vector> wj = A.groupBy("index").reduceGroup(new DotProduct())
