@@ -110,6 +110,7 @@ public class Vector implements Indexed {
      */
     public Vector(Set<VectorElement> elements, int index) {
         this.index = index;
+        this.elements = new ArrayList<>();
         // First add as many 0.0 values to this vector's element list as there are elements in the provided list. Then
         // copy each provided element into this vector's element list.
         IntStream.range(0, elements.size()).forEach(i -> this.elements.add(i, 0.0));
