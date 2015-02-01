@@ -41,14 +41,16 @@ public final class Lanczos {
         DataSet<Vector> v = env.fromCollection(vList);
         DataSet<Vector> w = env.fromCollection(wList).filter(vector -> false);
 
-        for (int j = 1; j < m; j++) {
+        for (int i = 1; i < m; i++) {
+            int j = i; // We need the current index as an 'effectively final' value for use in lambda expressions...
+
             // Get vj by filtering out all v vectors with an index != j.
-            DataSet<Vector> vj = v.filter(new IndexFilter<>(j));
+            DataSet<Vector> vj = v.filter(vector -> vector.getIndex() == j);
 
             // w[j] <-- A * v[j]
             DataSet<Vector> wj = A.groupBy("index").reduceGroup(new DotProduct())
                                   .withBroadcastSet(vj, "otherVector")
-                                  .reduceGroup(new VectorElementsToSingleVector(j));
+                                  .reduceGroup(new VectorElementsToSingleVector(i));
 
             // a[j] <-- w[j] * v[j]
             DataSet<VectorElement> aj = wj.reduceGroup(new DotProduct())
@@ -58,8 +60,8 @@ public final class Lanczos {
             // TODO: w[j]   <-- w[j] - a[j] * v[j] - b[j] * v[j-1]
             DataSet<Vector> ajvj = vj.reduceGroup(new VectorScalarMultiplication())
                                      .withBroadcastSet(aj, "scalar");
-            DataSet<Vector> previousVj = v.filter(new IndexFilter<>(j - 1));
-            DataSet<VectorElement> bj = b.filter(new IndexFilter<>(j));
+            DataSet<Vector> previousVj = v.filter(vector -> vector.getIndex() == j - 1);
+            DataSet<VectorElement> bj = b.filter(vector -> vector.getIndex() == j);
             DataSet<Vector> bjPreviousVj = previousVj.reduceGroup(new VectorScalarMultiplication())
                                                      .withBroadcastSet(bj, "scalar");
             w = w.union(wj);
@@ -71,10 +73,10 @@ public final class Lanczos {
             // TODO: If v[j+1] is not orthogonal to v[j] OR v[j+1] already exists in v, mark v[j+1] as "spurious".
 
             // TODO: Remove test outputs!
-            vj.writeAsText(new File("data/out/v" + j + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-            wj.writeAsText(new File("data/out/w" + j + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-            aj.writeAsText(new File("data/out/a" + j + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-            ajvj.writeAsText(new File("data/out/ajvj" + j + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            vj.writeAsText(new File("data/out/v" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            wj.writeAsText(new File("data/out/w" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            aj.writeAsText(new File("data/out/a" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            ajvj.writeAsText(new File("data/out/ajvj" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
         }
 
         w.writeAsText(new File("data/out/w.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
