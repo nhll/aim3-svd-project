@@ -46,6 +46,7 @@ public final class Lanczos {
 
             // Get vj by filtering out all v vectors with an index != j.
             DataSet<Vector> vj = v.filter(vector -> vector.getIndex() == j);
+            vj.writeAsText(new File("data/out/v_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
 
             // w[j] <-- A * v[j]
             DataSet<Vector> wj = A.groupBy("index").reduceGroup(new DotProduct())
@@ -57,26 +58,47 @@ public final class Lanczos {
                                           .withBroadcastSet(vj, "otherVector");
             a = a.union(aj);
 
-            // TODO: w[j]   <-- w[j] - a[j] * v[j] - b[j] * v[j-1]
-            DataSet<Vector> ajvj = vj.reduceGroup(new VectorScalarMultiplication())
+            // ajVj <-- a[j] * v[j]
+            DataSet<Vector> ajVj = vj.reduceGroup(new VectorScalarMultiplication())
                                      .withBroadcastSet(aj, "scalar");
-            DataSet<Vector> previousVj = v.filter(vector -> vector.getIndex() == j - 1);
-            DataSet<VectorElement> bj = b.filter(vector -> vector.getIndex() == j);
-            DataSet<Vector> bjPreviousVj = previousVj.reduceGroup(new VectorScalarMultiplication())
-                                                     .withBroadcastSet(bj, "scalar");
+
+            // bjVjMinus1 <-- b[j] * v[j-1]
+            DataSet<Vector> bjVjMinus1 = v.filter(vector -> vector.getIndex() == j - 1)
+                                          .reduceGroup(new VectorScalarMultiplication())
+                                          .withBroadcastSet(b.filter(element -> element.getIndex() == j), "scalar");
+
+            // wj <-- wj - ajVj - bjVjMinus1
+            // TODO: Is this calculation correct?
+            wj = wj.reduceGroup(new VectorSubtraction())
+                   .withBroadcastSet(ajVj, "otherVector")
+                   .reduceGroup(new VectorSubtraction())
+                   .withBroadcastSet(bjVjMinus1, "otherVector");
             w = w.union(wj);
 
-            // TODO: b[j+1] <-- l2norm(w[j])
+            // b[j+1] <-- l2norm(w[j])
+            DataSet<VectorElement> bjPlus1 = wj.reduceGroup(new GetVectorNorm())
+                                               .withBroadcastSet(env.fromElements(j + 1), "index")
+                                               .withBroadcastSet(env.fromElements(2), "norm");
+            b = b.union(bjPlus1);
 
-            // TODO: v[j+1] <-- w[j] / b[j+1]
+            // v[j+1] <-- w[j] / b[j+1]
+            DataSet<Vector> vjPlus1 = wj.reduceGroup(new VectorScalarDivision())
+                                        .withBroadcastSet(bjPlus1, "scalar");
+            v = v.union(vjPlus1);
 
             // TODO: If v[j+1] is not orthogonal to v[j] OR v[j+1] already exists in v, mark v[j+1] as "spurious".
 
             // TODO: Remove test outputs!
-            vj.writeAsText(new File("data/out/v" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-            wj.writeAsText(new File("data/out/w" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-            aj.writeAsText(new File("data/out/a" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-            ajvj.writeAsText(new File("data/out/ajvj" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+//            vj.writeAsText(new File("data/out/v_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            wj.writeAsText(new File("data/out/w_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            aj.writeAsText(new File("data/out/a_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            ajVj.writeAsText(new File("data/out/ajVj_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            bjVjMinus1.writeAsText(new File("data/out/bjVjMinus1_" + i + ".out").getAbsolutePath(),
+                                   FileSystem.WriteMode.OVERWRITE);
+            bjPlus1.writeAsText(new File("data/out/bjPlus1_" + i + ".out").getAbsolutePath(),
+                                FileSystem.WriteMode.OVERWRITE);
+            vjPlus1.writeAsText(new File("data/out/vjPlus1_" + i + ".out").getAbsolutePath(),
+                                FileSystem.WriteMode.OVERWRITE);
         }
 
         w.writeAsText(new File("data/out/w.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
