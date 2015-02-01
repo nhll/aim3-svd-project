@@ -5,7 +5,7 @@ import de.tuberlin.dima.aim3.datatypes.VectorElement;
 import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.util.Collector;
 
-import java.util.HashSet;
+import java.util.HashMap;
 
 public class VectorElementsToSingleVector implements GroupReduceFunction<VectorElement, Vector> {
 
@@ -21,9 +21,9 @@ public class VectorElementsToSingleVector implements GroupReduceFunction<VectorE
 
     @Override
     public void reduce(Iterable<VectorElement> elements, Collector<Vector> out) {
-        // Store all vector elements in a set and then emit a new vector created from that set.
-        HashSet<VectorElement> elementSet = new HashSet<>();
-        elements.forEach(elementSet::add);
-        out.collect(new Vector(elementSet, vectorIndex));
+        // Store all index/value pairs in a map and then emit a new vector created from that map.
+        HashMap<Integer, Double> elementMap = new HashMap<>();
+        elements.forEach(element -> elementMap.put(element.getIndex(), element.getValue()));
+        out.collect(new Vector(elementMap, vectorIndex));
     }
 }

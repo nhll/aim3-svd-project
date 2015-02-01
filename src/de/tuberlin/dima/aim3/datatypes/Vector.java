@@ -2,10 +2,7 @@ package de.tuberlin.dima.aim3.datatypes;
 
 import org.apache.hadoop.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.IntStream;
 
 // TODO: Implement vector algebra
@@ -101,31 +98,31 @@ public class Vector implements Indexed {
     }
 
     /**
-     * Same as {@link #Vector(java.util.List, int)}, but takes a set of VectorElement instances instead of a list of
-     * values.
+     * Same as {@link #Vector(java.util.List, int)}, but takes a map of double values mapped to their indices in the
+     * vector instead of a list of values.
      *
-     * @param elements A set of VectorElement objects representing the vector's values
+     * @param elements A map of double values mapped to their respective indices in the new vector
      * @param index    The vector's row or column index in the matrix
      * @see #Vector(java.util.List, int)
      */
-    public Vector(Set<VectorElement> elements, int index) {
+    public Vector(AbstractMap<Integer, Double> elements, int index) {
         this.index = index;
         this.elements = new ArrayList<>();
         // First add as many 0.0 values to this vector's element list as there are elements in the provided list. Then
         // copy each provided element into this vector's element list.
         IntStream.range(0, elements.size()).forEach(i -> this.elements.add(i, 0.0));
-        elements.forEach(element -> this.elements.set(element.getIndex(), element.getValue()));
+        elements.forEach(this.elements::set);
     }
 
     /**
-     * Same as {@link #Vector(java.util.Set, int)}, but for constructing a vector that's not part of a matrix and thus
-     * does not have an index value. Using this constructor, the vector's index will be set to {@link #NOINDEX
-     * Vector.NOINDEX}.
+     * Same as {@link #Vector(java.util.AbstractMap, int)}, but for constructing a vector that's not part of a matrix
+     * and thus does not have an index value. Using this constructor, the vector's index will be set to
+     * {@link #NOINDEX Vector.NOINDEX}.
      *
      * @param elements A set of VectorElement objects representing the vector's values
-     * @see #Vector(java.util.Set, int)
+     * @see #Vector(java.util.AbstractMap, int)
      */
-    public Vector(Set<VectorElement> elements) {
+    public Vector(AbstractMap<Integer, Double> elements) {
         this(elements, NOINDEX);
     }
 

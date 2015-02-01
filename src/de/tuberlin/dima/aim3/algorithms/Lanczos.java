@@ -52,6 +52,7 @@ public final class Lanczos {
             DataSet<Vector> wj = A.groupBy("index").reduceGroup(new DotProduct())
                                   .withBroadcastSet(vj, "otherVector")
                                   .reduceGroup(new VectorElementsToSingleVector(i));
+            wj.writeAsText(new File("data/out/w_" + i + "_1.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
 
             // a[j] <-- w[j] * v[j]
             DataSet<VectorElement> aj = wj.reduceGroup(new DotProduct())
@@ -85,12 +86,13 @@ public final class Lanczos {
             DataSet<Vector> vjPlus1 = wj.reduceGroup(new VectorScalarDivision())
                                         .withBroadcastSet(bjPlus1, "scalar");
             v = v.union(vjPlus1);
+            v.writeAsText(new File("data/out/v__" + j + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
 
             // TODO: If v[j+1] is not orthogonal to v[j] OR v[j+1] already exists in v, mark v[j+1] as "spurious".
 
             // TODO: Remove test outputs!
-//            vj.writeAsText(new File("data/out/v_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-            wj.writeAsText(new File("data/out/w_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            vj.writeAsText(new File("data/out/v_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            wj.writeAsText(new File("data/out/w_" + i + "_2.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
             aj.writeAsText(new File("data/out/a_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
             ajVj.writeAsText(new File("data/out/ajVj_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
             bjVjMinus1.writeAsText(new File("data/out/bjVjMinus1_" + i + ".out").getAbsolutePath(),
@@ -101,11 +103,13 @@ public final class Lanczos {
                                 FileSystem.WriteMode.OVERWRITE);
         }
 
-        w.writeAsText(new File("data/out/w.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-        a.writeAsText(new File("data/out/a.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-
         // TODO: wm <-- A  * vm
         // TODO: am <-- wm * vm
+
+        v.writeAsText(new File("data/out/v.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+        w.writeAsText(new File("data/out/w.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+        a.writeAsText(new File("data/out/a.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+        b.writeAsText(new File("data/out/b.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
 
         // TODO: Return something useful! Probably two data sets containing Tmm and Vm, respectively...
     }

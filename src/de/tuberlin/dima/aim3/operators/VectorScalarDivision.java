@@ -10,6 +10,11 @@ public class VectorScalarDivision extends RichGroupReduceFunction<Vector, Vector
     @Override
     public void reduce(Iterable<Vector> vectors, Collector<Vector> out) {
         double scalar = getRuntimeContext().<VectorElement>getBroadcastVariable("scalar").get(0).getValue();
-        vectors.forEach(vector -> out.collect(vector.divideBy(scalar)));
+        vectors.forEach(vector -> {
+            Vector result = vector.divideBy(scalar);
+            // TODO: Make the incremented index optional!
+            result.setIndex(result.getIndex() + 1);
+            out.collect(result);
+        });
     }
 }
