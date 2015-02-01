@@ -198,7 +198,10 @@ public class Vector implements Indexed {
      * @return The p-norm of this vector
      */
     public double norm(int p) {
-        double sumOfPowers = elements.stream().reduce(0.0, (element, base) -> base + Math.pow(element, p));
+        double sumOfPowers = elements.stream()
+                                     .map(element -> Math.pow(element, p))
+                                     .reduce(Double::sum)
+                                     .get();
         return Math.pow(sumOfPowers, (double) 1 / p);
     }
 
