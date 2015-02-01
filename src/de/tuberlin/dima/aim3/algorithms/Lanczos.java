@@ -31,16 +31,15 @@ public final class Lanczos {
         bList.add(new VectorElement(1, 0.0));       // b[1] <-- 0.0
 
         // Add an element to the a and w array lists, because you can't create DataSets from empty collections... These
-        // will be filtered out by the RejectAll filter below.
+        // will be filtered out by the filter below.
         aList.add(new VectorElement(0, 0.0));
         wList.add(Vector.getZeroVector(0));
 
-        // Convert everything to data sets. For a and w, use the RejectAll filter to produce empty DataSets by filtering
-        // out all elements.
-        DataSet<VectorElement> a = env.fromCollection(aList).filter(new RejectAll<>());
+        // Convert everything to data sets. For a and w, produce empty data sets by filtering out all elements.
+        DataSet<VectorElement> a = env.fromCollection(aList).filter(element -> false);
         DataSet<VectorElement> b = env.fromCollection(bList);
         DataSet<Vector> v = env.fromCollection(vList);
-        DataSet<Vector> w = env.fromCollection(wList).filter(new RejectAll<>());
+        DataSet<Vector> w = env.fromCollection(wList).filter(vector -> false);
 
         for (int j = 1; j < m; j++) {
             // Get vj by filtering out all v vectors with an index != j.
