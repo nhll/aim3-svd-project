@@ -1,8 +1,10 @@
 package de.tuberlin.dima.aim3.algorithms;
 
+import de.tuberlin.dima.aim3.Config;
 import de.tuberlin.dima.aim3.datatypes.Vector;
 import de.tuberlin.dima.aim3.datatypes.VectorElement;
 import de.tuberlin.dima.aim3.operators.*;
+
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.core.fs.FileSystem;
@@ -46,13 +48,13 @@ public final class Lanczos {
 
             // Get vj by filtering out all v vectors with an index != j.
             DataSet<Vector> vj = v.filter(vector -> vector.getIndex() == j);
-            vj.writeAsText(new File("data/out/v_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            vj.writeAsText(Config.getTmpOutput() + "v_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
 
             // w[j] <-- A * v[j]
             DataSet<Vector> wj = A.groupBy("index").reduceGroup(new DotProduct())
                                   .withBroadcastSet(vj, "otherVector")
                                   .reduceGroup(new VectorElementsToSingleVector(i));
-            wj.writeAsText(new File("data/out/w_" + i + "_1.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            wj.writeAsText(Config.getTmpOutput() + "w_" + i + "_1.out", FileSystem.WriteMode.OVERWRITE);
 
             // a[j] <-- w[j] * v[j]
             DataSet<VectorElement> aj = wj.reduceGroup(new DotProduct())
@@ -86,30 +88,30 @@ public final class Lanczos {
             DataSet<Vector> vjPlus1 = wj.reduceGroup(new VectorScalarDivision())
                                         .withBroadcastSet(bjPlus1, "scalar");
             v = v.union(vjPlus1);
-            v.writeAsText(new File("data/out/v__" + j + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+            v.writeAsText(Config.getTmpOutput() + "v__" + j + ".out", FileSystem.WriteMode.OVERWRITE);
 
             // TODO: If v[j+1] is not orthogonal to v[j] OR v[j+1] already exists in v, mark v[j+1] as "spurious".
 
             // TODO: Remove test outputs!
-            vj.writeAsText(new File("data/out/v_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-            wj.writeAsText(new File("data/out/w_" + i + "_2.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-            aj.writeAsText(new File("data/out/a_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-            ajVj.writeAsText(new File("data/out/ajVj_" + i + ".out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-            bjVjMinus1.writeAsText(new File("data/out/bjVjMinus1_" + i + ".out").getAbsolutePath(),
+            vj.writeAsText(Config.getTmpOutput() + "v_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
+            wj.writeAsText(Config.getTmpOutput() + "w_" + i + "_2.out", FileSystem.WriteMode.OVERWRITE);
+            aj.writeAsText(Config.getTmpOutput() + "a_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
+            ajVj.writeAsText(Config.getTmpOutput() + "ajVj_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
+            bjVjMinus1.writeAsText(Config.getTmpOutput() + "bjVjMinus1_" + i + ".out",
                                    FileSystem.WriteMode.OVERWRITE);
-            bjPlus1.writeAsText(new File("data/out/bjPlus1_" + i + ".out").getAbsolutePath(),
+            bjPlus1.writeAsText(Config.getTmpOutput() + "bjPlus1_" + i + ".out",
                                 FileSystem.WriteMode.OVERWRITE);
-            vjPlus1.writeAsText(new File("data/out/vjPlus1_" + i + ".out").getAbsolutePath(),
+            vjPlus1.writeAsText(Config.getTmpOutput() + "vjPlus1_" + i + ".out",
                                 FileSystem.WriteMode.OVERWRITE);
         }
 
         // TODO: wm <-- A  * vm
         // TODO: am <-- wm * vm
 
-        v.writeAsText(new File("data/out/v.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-        w.writeAsText(new File("data/out/w.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-        a.writeAsText(new File("data/out/a.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
-        b.writeAsText(new File("data/out/b.out").getAbsolutePath(), FileSystem.WriteMode.OVERWRITE);
+        v.writeAsText(Config.getTmpOutput() + "v.out", FileSystem.WriteMode.OVERWRITE);
+        w.writeAsText(Config.getTmpOutput() + "w.out", FileSystem.WriteMode.OVERWRITE);
+        a.writeAsText(Config.getTmpOutput() + "a.out", FileSystem.WriteMode.OVERWRITE);
+        b.writeAsText(Config.getTmpOutput() + "b.out", FileSystem.WriteMode.OVERWRITE);
 
         // TODO: Return something useful! Probably two data sets containing Tmm and Vm, respectively...
     }
