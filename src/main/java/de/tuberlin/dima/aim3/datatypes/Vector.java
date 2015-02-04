@@ -237,7 +237,7 @@ public class Vector implements Indexed  {
         for (int i = 0; i < size; i++) {
             resultingElements.add(i, elements.get(i) - otherElements.get(i));
         }
-        return new Vector(resultingElements);
+        return new Vector(resultingElements, index);
     }
 
     /**

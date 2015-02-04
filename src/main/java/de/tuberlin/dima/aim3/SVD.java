@@ -12,7 +12,7 @@ import java.util.Locale;
 
 public class SVD {
 
-  private static final int LANCZOS_ITERATIONS = 5;
+  private static final int LANCZOS_ITERATIONS = 3;
 
   public static void main(String[] args) throws Exception {
     // Set default locale to US so that double values are displayed with a dot instead of a comma.

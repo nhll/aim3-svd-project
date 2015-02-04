@@ -12,6 +12,7 @@ public class VectorScalarDivision extends RichGroupReduceFunction<Vector, Vector
         double scalar = getRuntimeContext().<VectorElement>getBroadcastVariable("scalar").get(0).getValue();
         vectors.forEach(vector -> {
             Vector result = vector.divideBy(scalar);
+            System.out.println("VECTOR INDEX: " + vector.getIndex());
             // TODO: Make the incremented index optional!
             result.setIndex(result.getIndex() + 1);
             out.collect(result);
