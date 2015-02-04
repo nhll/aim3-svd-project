@@ -28,7 +28,7 @@ public final class Lanczos {
         List<Vector> wList = new ArrayList<>();
 
         vList.add(Vector.getZeroVector(3, 0));      // v[0] <-- 0-vector
-        vList.add(Vector.getRandomVector(3, 1, 1)); // v[1] <-- Random vector with norm 1
+        vList.add(Vector.getNormalizedRandomVector(3, 1)); // v[1] <-- normalized Random vector with norm 1
         bList.add(new VectorElement(0, 0.0));       // b[0] <-- 0.0
         bList.add(new VectorElement(1, 0.0));       // b[1] <-- 0.0
 

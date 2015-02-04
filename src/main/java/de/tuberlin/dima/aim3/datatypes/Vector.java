@@ -3,6 +3,8 @@ package de.tuberlin.dima.aim3.datatypes;
 import org.apache.hadoop.util.StringUtils;
 
 import java.util.*;
+import java.util.function.BinaryOperator;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 // TODO: Implement vector algebra
@@ -40,22 +42,21 @@ public class Vector implements Indexed  {
     }
 
     /**
-     * Generates a new random vector of the specified size (being the number of elements in the vector) and with the
-     * specified L2-norm and row/column index. It does this by generating a vector of the specified size filled with
-     * random values between 0.0 and 1.0 and then scaling that vector to the specified target norm.
+     * Generates a new normalized (L-2) random vector of the specified size (being the number of elements in the vector).
+     * It does this by generating a vector of the specified size filled with
+     * random values between 0.0 and 1.0 and then normalizing it.
      *
      * @param size  The number of elements that the generated vector should have
-     * @param norm  The L2-norm that the generated vector should have
      * @param index The row/column index of the generated vector in the corresponding matrix
      * @return A new random vector of the specified size and with the specified L2-norm and row/column index
      *
      * @see #scaleTo(double)
      */
-    public static Vector getRandomVector(int size, double norm, int index) {
+    public static Vector getNormalizedRandomVector(int size, int index) {
         ArrayList<Double> elements = new ArrayList<>();
         Random r = new Random();
         IntStream.range(0, size).forEach(i -> elements.add(i, r.nextDouble()));
-        return new Vector(elements, index).scaleTo(norm);
+        return new Vector(elements, index).normalize();
     }
 
     /**
@@ -69,8 +70,8 @@ public class Vector implements Indexed  {
      * @see #getRandomVector(int, double, int)
      * @see #scaleTo(double)
      */
-    public static Vector getRandomVector(int size, double norm) {
-        return getRandomVector(size, norm, NOINDEX);
+    public static Vector getRandomVector(int size) {
+        return getNormalizedRandomVector(size, NOINDEX);
     }
 
     /**
@@ -287,7 +288,41 @@ public class Vector implements Indexed  {
         elements.forEach(element -> dividedElements.add(element / x));
         return new Vector(dividedElements, index);
     }
+    
+    /**
+     * Normalizes this vector by calculating the L-p norm ({@param p}) and dividing each element by that norm.
+     * @param p
+     * @return
+     */
+    public Vector normalize(int p) {
+    	List<Double> normalizedElements = elements.stream().map(x -> x / getNorm(2)).collect(Collectors.toList());
+    	return new Vector(normalizedElements, getIndex());
+    }
+    
+    /**
+     * See {@link #normalize(int p)}. If no p is specified, this method assumes L-2 norm (euclidian).
+     * @return
+     */
+    public Vector normalize() { return normalize(2); }
 
+    /**
+     * Calculates the L-p norm of this vector.
+     * @param p
+     * 			the p in "L-p norm"
+     * @return
+     * 			the L-p norm of this vector
+     */
+    public double getNorm(int p) {
+    	return Math.pow(elements.stream().map(x -> Math.pow(x, p)).reduce(0.0, Double::sum), 1.0/p);
+    }
+    
+    /**
+     * See {@link #normalize(int p)}. If no p is specified, this method assumes L-2 norm (euclidian).
+     * @return
+     * 			the L-2 norm of this vector
+     */
+    public double getNorm() { return getNorm(2); };
+    
     /**
      * @return A String representing this vector
      */
