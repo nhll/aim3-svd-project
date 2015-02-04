@@ -43,7 +43,7 @@ public final class Lanczos {
         DataSet<Vector> v = env.fromCollection(vList);
         DataSet<Vector> w = env.fromCollection(wList).filter(vector -> false);
 
-        for (int i = 1; i < m; i++) {
+        for (int i = 1; i <= m; i++) {
             int j = i; // We need the current index as an 'effectively final' value for use in lambda expressions...
 
             // Get vj by filtering out all v vectors with an index != j.
@@ -52,57 +52,63 @@ public final class Lanczos {
 
             // w[j] <-- A * v[j]
             DataSet<Vector> wj = A.groupBy("index").reduceGroup(new DotProduct())
-                                  .withBroadcastSet(vj, "otherVector")
-                                  .reduceGroup(new VectorElementsToSingleVector(i));
+                    .withBroadcastSet(vj, "otherVector")
+                    .reduceGroup(new VectorElementsToSingleVector(i));
             wj.writeAsText(Config.getTmpOutput() + "w_" + i + "_1.out", FileSystem.WriteMode.OVERWRITE);
 
             // a[j] <-- w[j] * v[j]
             DataSet<VectorElement> aj = wj.reduceGroup(new DotProduct())
-                                          .withBroadcastSet(vj, "otherVector");
+                    .withBroadcastSet(vj, "otherVector");
             a = a.union(aj);
 
-            // ajVj <-- a[j] * v[j]
-            DataSet<Vector> ajVj = vj.reduceGroup(new VectorScalarMultiplication())
-                                     .withBroadcastSet(aj, "scalar");
+            if (i == m) {
+                w = w.union(wj);
+            }
+            else {
 
-            // bjVjMinus1 <-- b[j] * v[j-1]
-            DataSet<Vector> bjVjMinus1 = v.filter(vector -> vector.getIndex() == j - 1)
-                                          .reduceGroup(new VectorScalarMultiplication())
-                                          .withBroadcastSet(b.filter(element -> element.getIndex() == j), "scalar");
+                // ajVj <-- a[j] * v[j]
+                DataSet<Vector> ajVj = vj.reduceGroup(new VectorScalarMultiplication())
+                        .withBroadcastSet(aj, "scalar");
 
-            // wj <-- wj - ajVj - bjVjMinus1
-            // TODO: Is this calculation correct?
-            wj = wj.reduceGroup(new VectorSubtraction())
-                   .withBroadcastSet(ajVj, "otherVector")
-                   .reduceGroup(new VectorSubtraction())
-                   .withBroadcastSet(bjVjMinus1, "otherVector");
-            w = w.union(wj);
+                // bjVjMinus1 <-- b[j] * v[j-1]
+                DataSet<Vector> bjVjMinus1 = v.filter(vector -> vector.getIndex() == j - 1)
+                        .reduceGroup(new VectorScalarMultiplication())
+                        .withBroadcastSet(b.filter(element -> element.getIndex() == j), "scalar");
 
-            // b[j+1] <-- l2norm(w[j])
-            DataSet<VectorElement> bjPlus1 = wj.reduceGroup(new GetVectorNorm())
-                                               .withBroadcastSet(env.fromElements(j + 1), "index")
-                                               .withBroadcastSet(env.fromElements(2), "norm");
-            b = b.union(bjPlus1);
+                // wj <-- wj - ajVj - bjVjMinus1
+                // TODO: Is this calculation correct?
+                wj = wj.reduceGroup(new VectorSubtraction())
+                        .withBroadcastSet(ajVj, "otherVector")
+                        .reduceGroup(new VectorSubtraction())
+                        .withBroadcastSet(bjVjMinus1, "otherVector");
+                w = w.union(wj);
 
-            // v[j+1] <-- w[j] / b[j+1]
-            DataSet<Vector> vjPlus1 = wj.reduceGroup(new VectorScalarDivision())
-                                        .withBroadcastSet(bjPlus1, "scalar");
-            v = v.union(vjPlus1);
-            v.writeAsText(Config.getTmpOutput() + "v__" + j + ".out", FileSystem.WriteMode.OVERWRITE);
+                // b[j+1] <-- l2norm(w[j])
+                DataSet<VectorElement> bjPlus1 = wj.reduceGroup(new GetVectorNorm())
+                        .withBroadcastSet(env.fromElements(j + 1), "index")
+                        .withBroadcastSet(env.fromElements(2), "norm");
+                b = b.union(bjPlus1);
 
-            // TODO: If v[j+1] is not orthogonal to v[j] OR v[j+1] already exists in v, mark v[j+1] as "spurious".
+                // v[j+1] <-- w[j] / b[j+1]
+                DataSet<Vector> vjPlus1 = wj.reduceGroup(new VectorScalarDivision())
+                        .withBroadcastSet(bjPlus1, "scalar");
+                v = v.union(vjPlus1);
+                v.writeAsText(Config.getTmpOutput() + "v__" + j + ".out", FileSystem.WriteMode.OVERWRITE);
 
-            // TODO: Remove test outputs!
-            vj.writeAsText(Config.getTmpOutput() + "v_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
-            wj.writeAsText(Config.getTmpOutput() + "w_" + i + "_2.out", FileSystem.WriteMode.OVERWRITE);
-            aj.writeAsText(Config.getTmpOutput() + "a_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
-            ajVj.writeAsText(Config.getTmpOutput() + "ajVj_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
-            bjVjMinus1.writeAsText(Config.getTmpOutput() + "bjVjMinus1_" + i + ".out",
-                                   FileSystem.WriteMode.OVERWRITE);
-            bjPlus1.writeAsText(Config.getTmpOutput() + "bjPlus1_" + i + ".out",
-                                FileSystem.WriteMode.OVERWRITE);
-            vjPlus1.writeAsText(Config.getTmpOutput() + "vjPlus1_" + i + ".out",
-                                FileSystem.WriteMode.OVERWRITE);
+                // TODO: If v[j+1] is not orthogonal to v[j] OR v[j+1] already exists in v, mark v[j+1] as "spurious".
+
+                // TODO: Remove test outputs!
+                vj.writeAsText(Config.getTmpOutput() + "v_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
+                wj.writeAsText(Config.getTmpOutput() + "w_" + i + "_2.out", FileSystem.WriteMode.OVERWRITE);
+                aj.writeAsText(Config.getTmpOutput() + "a_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
+                ajVj.writeAsText(Config.getTmpOutput() + "ajVj_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
+                bjVjMinus1.writeAsText(Config.getTmpOutput() + "bjVjMinus1_" + i + ".out",
+                        FileSystem.WriteMode.OVERWRITE);
+                bjPlus1.writeAsText(Config.getTmpOutput() + "bjPlus1_" + i + ".out",
+                        FileSystem.WriteMode.OVERWRITE);
+                vjPlus1.writeAsText(Config.getTmpOutput() + "vjPlus1_" + i + ".out",
+                        FileSystem.WriteMode.OVERWRITE);
+            }
         }
 
         // TODO: wm <-- A  * vm
