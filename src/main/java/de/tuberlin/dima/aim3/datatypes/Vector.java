@@ -53,7 +53,7 @@ public class Vector implements Indexed  {
      */
     public static Vector getRandomVector(int size, double norm, int index) {
         ArrayList<Double> elements = new ArrayList<>();
-        Random r = new Random();
+        Random r = new Random(1L);
         IntStream.range(0, size).forEach(i -> elements.add(i, r.nextDouble()));
         return new Vector(elements, index).scaleTo(norm);
     }

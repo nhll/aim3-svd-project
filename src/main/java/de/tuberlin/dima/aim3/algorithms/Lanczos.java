@@ -5,13 +5,20 @@ import de.tuberlin.dima.aim3.datatypes.Vector;
 import de.tuberlin.dima.aim3.datatypes.VectorElement;
 import de.tuberlin.dima.aim3.operators.*;
 
+import org.apache.flink.api.common.functions.CrossFunction;
+import org.apache.flink.api.common.functions.GroupReduceFunction;
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.core.fs.FileSystem;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 public final class Lanczos {
 
@@ -92,6 +99,16 @@ public final class Lanczos {
                 // v[j+1] <-- w[j] / b[j+1]
                 DataSet<Vector> vjPlus1 = wj.reduceGroup(new VectorScalarDivision())
                         .withBroadcastSet(bjPlus1, "scalar");
+
+                // orthogonalize:
+                // for k .. i do
+                //   v[j+1] <-- v[j+1] - (v[k] . v[j+1]) * v[k]
+                for(int k=1; k<=j; k++) {
+                    int l=k;
+                    DataSet<Vector> vk = v.filter(vector -> vector.getIndex() == l);
+                    // gram-schmitt
+                    vjPlus1 = vjPlus1.cross(vk).with((v1, v2) -> v1.minus(v2.times(v2.dot(v1))));
+                }
                 v = v.union(vjPlus1);
                 v.writeAsText(Config.getTmpOutput() + "v__" + j + ".out", FileSystem.WriteMode.OVERWRITE);
 
@@ -114,10 +131,33 @@ public final class Lanczos {
         // TODO: wm <-- A  * vm
         // TODO: am <-- wm * vm
 
+        DataSet<Tuple3<Integer,Integer,Double>> dots = v.reduceGroup(new GroupReduceFunction<Vector, Tuple3<Integer,Integer,Double>>() {
+            List<Vector> vectors = new ArrayList<Vector>();
+            @Override
+            public void reduce(Iterable<Vector> values, org.apache.flink.util.Collector<Tuple3<Integer,Integer,Double>> out) throws Exception {
+                for(Vector v : values) {
+                    vectors.add(v);
+
+                }
+                System.out.println(vectors);
+                for(Vector v1 : vectors) {
+                    for(Vector v2 : vectors) {
+                        if(v1.getIndex() <= v2.getIndex()) {
+                            Tuple3<Integer, Integer, Double> res = new Tuple3<Integer, Integer, Double>(v1.getIndex(), v2.getIndex(), v1.dot(v2));
+                            out.collect(res);
+                        }
+                    }
+                }
+            }
+        });
+        dots.writeAsText(Config.getTmpOutput() + "dots.out", FileSystem.WriteMode.OVERWRITE);
+
         v.writeAsText(Config.getTmpOutput() + "v.out", FileSystem.WriteMode.OVERWRITE);
         w.writeAsText(Config.getTmpOutput() + "w.out", FileSystem.WriteMode.OVERWRITE);
         a.writeAsText(Config.getTmpOutput() + "a.out", FileSystem.WriteMode.OVERWRITE);
         b.writeAsText(Config.getTmpOutput() + "b.out", FileSystem.WriteMode.OVERWRITE);
+
+
 
         // TODO: Return something useful! Probably two data sets containing Tmm and Vm, respectively...
     }
