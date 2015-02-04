@@ -7,7 +7,7 @@ import java.util.stream.IntStream;
 
 // TODO: Implement vector algebra
 // TODO: Class documentation comment
-public class Vector implements Indexed {
+public class Vector implements Indexed  {
 
     /** This value is used for indices of vectors that are not part of a matrix and that thus have no indices. */
     public static final int NOINDEX = -1;

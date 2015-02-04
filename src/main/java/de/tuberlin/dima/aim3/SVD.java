@@ -21,7 +21,7 @@ public class SVD {
     ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
     // Read the text file containing the input matrix line by line.
-    DataSource<String> inputMatrix = env.readTextFile(new File("data/test1.matrix").getAbsolutePath());
+    DataSource<String> inputMatrix = env.readTextFile(SVD.class.getClassLoader().getResource("test1.matrix").toURI().toString());
 
     // Parse the input file to a data set of row vectors.
     DataSet<Vector> matrix = inputMatrix.map(new MatrixReader());
