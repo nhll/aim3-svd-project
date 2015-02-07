@@ -1,6 +1,7 @@
 package de.tuberlin.dima.aim3.algorithms;
 
 import de.tuberlin.dima.aim3.Config;
+import de.tuberlin.dima.aim3.datatypes.Matrix;
 import de.tuberlin.dima.aim3.datatypes.Vector;
 import de.tuberlin.dima.aim3.datatypes.VectorElement;
 import de.tuberlin.dima.aim3.operators.*;
@@ -20,10 +21,20 @@ import java.util.List;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
-public final class Lanczos {
+public final class FlinkLanczosSolver {
 
-    private Lanczos() {
+    private FlinkLanczosSolver() {
         // Private constructor pretty much makes this class static.
+    }
+
+
+    public static DataSet<Matrix> run(Matrix A, int desiredRank) {
+        Matrix result = null;
+
+        A.iterate(desiredRank).c
+
+
+        return result;
     }
 
     public static void process(DataSet<Vector> A, int m) {
