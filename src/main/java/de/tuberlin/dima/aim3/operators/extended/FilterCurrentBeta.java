@@ -8,9 +8,15 @@ import org.apache.flink.api.common.functions.RichFilterFunction;
  * Created by fsander on 08.02.15.
  */
 public class FilterCurrentBeta extends RichFilterFunction<Element> {
+
+    private final long step;
+
+    public FilterCurrentBeta(long step) {
+        this.step = step;
+    }
+
     @Override
     public boolean filter(Element value) throws Exception {
-        int stepNr = getIterationRuntimeContext().getSuperstepNumber();
-        return value.getId() == Config.idOfTriag && value.getRow().equals(stepNr + 1) && value.getCol().equals(stepNr);
+        return value.getId() == Config.idOfTriag && value.getRow().equals(step + 1) && value.getCol().equals(step);
     }
 }

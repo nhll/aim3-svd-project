@@ -3,13 +3,14 @@ package de.tuberlin.dima.aim3.algorithms;
 import de.tuberlin.dima.aim3.Config;
 import de.tuberlin.dima.aim3.datatypes.Element;
 import de.tuberlin.dima.aim3.operators.Multiplication;
-import de.tuberlin.dima.aim3.operators.custom.*;
+import de.tuberlin.dima.aim3.operators.custom.CreateElementWithL2Norm;
+import de.tuberlin.dima.aim3.operators.custom.GetScaleFactor;
+import de.tuberlin.dima.aim3.operators.custom.IncrementColumn;
+import de.tuberlin.dima.aim3.operators.custom.SetRowAndCol;
 import de.tuberlin.dima.aim3.operators.extended.*;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.operators.DeltaIteration;
 import org.apache.mahout.math.decomposer.lanczos.LanczosSolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,77 +80,53 @@ public final class FlinkLanczosSolver extends LanczosSolver {
         /*
             ### initialize iteration ###
          */
-        // the solution set contains elements, that we don't need in an interation step. For now, this is only the first alpha
-        DataSet<Element> initialSolutionSet = alpha1;
-        // the workset contains all the stuff that is needed to proccess on that. That is v_i-1, v_i, and b_i
-        DataSet<Element> initialWorkingset = v1.union(v2.union(beta2));
-        DeltaIteration<Element, Element> iteration =
-                initialSolutionSet.iterateDelta(initialWorkingset, desiredRank - 2, Element.ID, Element.ROW, Element.COL);
+
+        DataSet<Element> result = alpha1.union(v1.union(v2.union(beta2)));
+
+        for(long i = 2; i < desiredRank; i++) {
+
         /*
             ### iteration step ###
          */
-        // get needed stuff from workset
-        DataSet<Element> workset = iteration.getWorkset();
-        // get v_i
-        DataSet<Element> currentVector = workset.runOperation(new FilterCurrentVector());
-        // get v_i-1 / will be empty in first iteration
-        DataSet<Element> previousVector = workset.runOperation(new FilterPreviousVector());
-        // get b_i
-        DataSet<Element> currentBeta = workset.filter(new FilterCurrentBeta());
-        // do actual work
-        // v_i+1 = A * v_i
-        DataSet<Element> nextVector = Multiplication.multiply(corpus, currentVector, Config.idOfBasis).runOperation(new IncrementColumn());
-        // scale nextVector
-        nextVector = Multiplication.scalarDouble(nextVector, scaleFactorSet);
-        // v_i+1 -= beta_i * v_i-1
-        nextVector = Multiplication.substract(nextVector, Multiplication.scalar(previousVector, currentBeta));
-        // alpha_i = v_i+1 . v_i
-        DataSet<Element> currentAlpha = Multiplication.dot(currentVector, nextVector, Config.idOfTriag).map(new SetNewAlphaRowAndCol());
-        // v_i+1 -= alpha_i * v_i
-        nextVector = Multiplication.substract(nextVector, Multiplication.scalar(currentVector, currentAlpha));
+            // get v_i
+            DataSet<Element> currentVector = result.filter(new FilterBasisVector(i));
+
+            // get v_i-1 / will be empty in first iteration
+            DataSet<Element> previousVector = result.filter(new FilterBasisVector(i - 1));
+            // get b_i
+            DataSet<Element> currentBeta = result.filter(new FilterCurrentBeta(i));
+            // do actual work
+            // v_i+1 = A * v_i
+            DataSet<Element> nextVector = Multiplication.multiply(corpus, currentVector, Config.idOfBasis).runOperation(new IncrementColumn());
+            // scale nextVector
+            nextVector = Multiplication.scalarDouble(nextVector, scaleFactorSet);
+            // v_i+1 -= beta_i * v_i-1
+            nextVector = Multiplication.substract(nextVector, Multiplication.scalar(previousVector, currentBeta));
+            // alpha_i = v_i+1 . v_i
+            DataSet<Element> currentAlpha = Multiplication.dot(currentVector, nextVector, Config.idOfTriag).map(new SetNewAlphaRowAndCol(i));
+            // v_i+1 -= alpha_i * v_i
+            nextVector = Multiplication.substract(nextVector, Multiplication.scalar(currentVector, currentAlpha));
         /*
             ### orthogonalization ###
 
-            Exception in thread "main" org.apache.flink.compiler.CompilerException: Nested iterations are currently not supported.
-
-            .....................................
-
          */
+//            for (long j = 1; j < i - 1; j++) {
+//                DataSet<Element> currentOrthoBaseVector = result.filter(new FilterBasisVector(j));
+//                DataSet<Element> pseudoAlpha = Multiplication.dot(nextVector, currentOrthoBaseVector, (byte) -1);
+//                nextVector = Multiplication.substract(nextVector, Multiplication.scalar(currentOrthoBaseVector, pseudoAlpha));
+//            }
 
-        DataSet<Element> initialOrthoWorkset = env.generateSequence(1, numRows).cross(env.generateSequence(1, desiredRank)).with((x,y) -> new Element(Config.idOfBasis, x, y, 0.0)).join(iteration.getSolutionSet()).where(0,1,2).equalTo(0,1,2).with((e1,e2)->e2);
-        DataSet<Element> initialOrthoSolutionSet = nextVector;
-        DeltaIteration<Element,Element> orthoIteration = initialOrthoSolutionSet.iterateDelta(initialOrthoWorkset, desiredRank, Element.ID, Element.ROW, Element.ROW);
-        DataSet<Element> currentOrthoBaseVector = orthoIteration.getWorkset().runOperation(new FilterCurrentOrthoVector());
-        DataSet<Element> pseudoAlpha = Multiplication.dot(nextVector, currentOrthoBaseVector, (byte) -1);
-        nextVector = Multiplication.substract(nextVector, Multiplication.scalar(currentOrthoBaseVector, pseudoAlpha));
-        DataSet<Element> nextOrthoWorkset = orthoIteration.getWorkset().filter(new RichFilterFunction<Element>() {
-            @Override
-            public boolean filter(Element e) throws Exception {
-                int curStep = getIterationRuntimeContext().getSuperstepNumber();
-                return e.getId() == Config.idOfBasis && e.getCol().compareTo(Long.valueOf(curStep)) > 0;
-            }
-        });
-        nextVector = orthoIteration.closeWith(nextVector, nextOrthoWorkset);
-
-        DataSet<Element> nextBeta = nextVector.runOperation(new CreateElementWithL2Norm(Config.idOfTriag)).map(new SetNewBetaRowAndCol());
+            DataSet<Element> nextBeta = nextVector.runOperation(new CreateElementWithL2Norm(Config.idOfTriag)).map(new SetNewBetaRowAndCol(i));
         /*
             ### TBD range check ###
-            this has to be some sort of nextWorkset = ...
-            because emptying the nextWorkset is the only chance of bailing out of the iteration early
          */
-        // b_i+1 = ||v_i+1||. So this normalizes v_i+1
-        nextVector = Multiplication.scalarInverted(nextVector, nextBeta);
-        /*
-            ### prepare next iteration ###
-         */
+            // b_i+1 = ||v_i+1||. So this normalizes v_i+1
+            nextVector = Multiplication.scalarInverted(nextVector, nextBeta);
 
-        // the next workset consists of v_i, v_i+1 and b_i+1
-        DataSet<Element> nextWorkset = currentVector.union(nextVector.union(nextBeta));
+            // the next workset consists of v_i, v_i+1 and b_i+1
+            result = result.union(nextVector.union(nextBeta.union(currentAlpha)));
 
-        // in each iteration, we add v_i-1, b_i, and a_i
-        DataSet<Element> solutionSetDelta = nextWorkset.union(previousVector.union(currentBeta.union(currentAlpha)));
-
-        DataSet<Element> result = iteration.closeWith(solutionSetDelta, nextWorkset);
+        }
 
         // return the final result
         return finalizeLanczos(corpus, result, desiredRank, isSymmetric);

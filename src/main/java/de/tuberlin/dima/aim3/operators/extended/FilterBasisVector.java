@@ -9,14 +9,14 @@ import org.apache.flink.api.common.functions.FilterFunction;
  */
 public class FilterBasisVector implements FilterFunction<Element> {
 
-    private final Long lastCol;
+    private final Long col;
 
-    public FilterBasisVector(Long lastCol) {
-        this.lastCol = lastCol;
+    public FilterBasisVector(Long col) {
+        this.col = col;
     }
 
     @Override
     public boolean filter(Element e) throws Exception {
-        return e.getId() == Config.idOfBasis && e.getCol().equals(lastCol);
+        return e.getId() == Config.idOfBasis && e.getCol().equals(col);
     }
 }
