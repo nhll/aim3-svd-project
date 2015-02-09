@@ -1,175 +1,171 @@
 package de.tuberlin.dima.aim3.algorithms;
 
 import de.tuberlin.dima.aim3.Config;
-import de.tuberlin.dima.aim3.datatypes.Matrix;
-import de.tuberlin.dima.aim3.datatypes.Vector;
-import de.tuberlin.dima.aim3.datatypes.VectorElement;
-import de.tuberlin.dima.aim3.operators.*;
-
-import org.apache.flink.api.common.functions.CrossFunction;
-import org.apache.flink.api.common.functions.GroupReduceFunction;
+import de.tuberlin.dima.aim3.datatypes.Element;
+import de.tuberlin.dima.aim3.operators.Multiplication;
+import de.tuberlin.dima.aim3.operators.custom.*;
+import de.tuberlin.dima.aim3.operators.extended.*;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.functions.RichMapFunction;
+import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.tuple.Tuple3;
-import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.api.java.operators.DeltaIteration;
+import org.apache.mahout.math.decomposer.lanczos.LanczosSolver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
+public final class FlinkLanczosSolver extends LanczosSolver {
 
-public final class FlinkLanczosSolver {
+    private static final Logger log = LoggerFactory.getLogger(FlinkLanczosSolver.class);
 
-    private FlinkLanczosSolver() {
-        // Private constructor pretty much makes this class static.
+    private static DataSet<Element> getInitialBaseVector(ExecutionEnvironment env, long desiredNumRows) {
+        return env.generateSequence(1, desiredNumRows).map(new MapFunction<Long, Element>() {
+            @Override
+            public Element map(Long row) throws Exception {
+                return new Element(Config.idOfBasis, row, 1L, Math.sqrt(1.0 / (double) desiredNumRows));
+            }
+        });
     }
 
+    public static DataSet<Element> solve(ExecutionEnvironment env, DataSet<Element> corpus, long numRows, long numCols, int desiredRank, boolean isSymmetric) {
+        return solve(env, corpus, numRows, numCols, desiredRank, isSymmetric, null);
+    }
 
-    public static DataSet<Matrix> run(Matrix A, int desiredRank) {
-        Matrix result = null;
+    public static DataSet<Element> solve(ExecutionEnvironment env, DataSet<Element> corpus, long numRows, long numCols, int desiredRank, boolean isSymmetric, Double scaleFactor) {
 
-        A.iterate(desiredRank).c
+        // we actually want to compute eigenpairs of A^T * T, but if A is symmetric, this equals to A with each element
+        // squared. So in that case, we leave A untouched, and sqrt the eigenvalues of A^T * T in the unsymmetric case
+        // to get same results as in the symmetric case
+        if (!isSymmetric) {
+            corpus = Multiplication.multiplySquared(corpus, corpus, Config.idOfCorpus);
+        }
+        /*
+        - each delta iteration has two inputs: workSet and solutionSet
+        - each iteration produces two results: new workSet and solutionSet-delta
+        - a delta iteration is initialized on the initial solutionSet
+        - arguments to that are the initial deltaSet, maxIterations and key positions
+         */
 
+        /*
+            ### pre-step ###
+         */
+        DataSet<Element> v1 = getInitialBaseVector(env, numRows);
+        if(desiredRank == 1) {
+            return finalizeLanczos(corpus, v1, desiredRank, isSymmetric);
+        }
+        DataSet<Element> v2 = Multiplication.multiply(corpus, v1, Config.idOfBasis).runOperation(new IncrementColumn());
 
+        DataSet<Double> scaleFactorSet;
+        if(scaleFactor != null && scaleFactor > 0.0) {
+            scaleFactorSet = env.fromElements(1.0 / scaleFactor);
+        }
+        else {
+            scaleFactorSet = v2.runOperation(new GetScaleFactor());
+        }
+        v2 = Multiplication.scalarDouble(v2, scaleFactorSet);
+        DataSet<Element> alpha1 = Multiplication.dot(v1, v2, Config.idOfTriag).runOperation(new SetRowAndCol(1L, 1L));
+        //if(1==1) return alpha1;
+        // v2 -= alpha * v1. This step is the actual orthogonalization (why?). Alpha contains the "un-orthogonal"
+        // projection. This is why we don't need to orthogonalize the nextVector to the previous. It has been done as part
+        // of the algorithm.
+        v2 = Multiplication.substract(v2, Multiplication.scalar(v1, alpha1));
+        // in case of puzzlement about beta**2**: in tridiag we have 1 to m alphas (diagonal) and 2 to m betas (one off diagonal)
+        DataSet<Element> beta2 = v2.runOperation(new CreateElementWithL2Norm(Config.idOfTriag)).runOperation(new SetRowAndCol(2L, 1L));
+
+        if(desiredRank == 2) {
+            return finalizeLanczos(corpus, v1.union(v2.union(beta2.union(alpha1))), desiredRank, isSymmetric);
+        }
+
+        /*
+            ### initialize iteration ###
+         */
+        // the solution set contains elements, that we don't need in an interation step. For now, this is only the first alpha
+        DataSet<Element> initialSolutionSet = alpha1;
+        // the workset contains all the stuff that is needed to proccess on that. That is v_i-1, v_i, and b_i
+        DataSet<Element> initialWorkingset = v1.union(v2.union(beta2));
+        DeltaIteration<Element, Element> iteration =
+                initialSolutionSet.iterateDelta(initialWorkingset, desiredRank - 2, Element.ID, Element.ROW, Element.COL);
+        /*
+            ### iteration step ###
+         */
+        // get needed stuff from workset
+        DataSet<Element> workset = iteration.getWorkset();
+        // get v_i
+        DataSet<Element> currentVector = workset.runOperation(new FilterCurrentVector());
+        // get v_i-1 / will be empty in first iteration
+        DataSet<Element> previousVector = workset.runOperation(new FilterPreviousVector());
+        // get b_i
+        DataSet<Element> currentBeta = workset.filter(new FilterCurrentBeta());
+        // do actual work
+        // v_i+1 = A * v_i
+        DataSet<Element> nextVector = Multiplication.multiply(corpus, currentVector, Config.idOfBasis).runOperation(new IncrementColumn());
+        // scale nextVector
+        nextVector = Multiplication.scalarDouble(nextVector, scaleFactorSet);
+        // v_i+1 -= beta_i * v_i-1
+        nextVector = Multiplication.substract(nextVector, Multiplication.scalar(previousVector, currentBeta));
+        // alpha_i = v_i+1 . v_i
+        DataSet<Element> currentAlpha = Multiplication.dot(currentVector, nextVector, Config.idOfTriag).map(new SetNewAlphaRowAndCol());
+        // v_i+1 -= alpha_i * v_i
+        nextVector = Multiplication.substract(nextVector, Multiplication.scalar(currentVector, currentAlpha));
+        /*
+            ### orthogonalization ###
+
+            Exception in thread "main" org.apache.flink.compiler.CompilerException: Nested iterations are currently not supported.
+
+            .....................................
+
+         */
+
+        DataSet<Element> initialOrthoWorkset = env.generateSequence(1, numRows).cross(env.generateSequence(1, desiredRank)).with((x,y) -> new Element(Config.idOfBasis, x, y, 0.0)).join(iteration.getSolutionSet()).where(0,1,2).equalTo(0,1,2).with((e1,e2)->e2);
+        DataSet<Element> initialOrthoSolutionSet = nextVector;
+        DeltaIteration<Element,Element> orthoIteration = initialOrthoSolutionSet.iterateDelta(initialOrthoWorkset, desiredRank, Element.ID, Element.ROW, Element.ROW);
+        DataSet<Element> currentOrthoBaseVector = orthoIteration.getWorkset().runOperation(new FilterCurrentOrthoVector());
+        DataSet<Element> pseudoAlpha = Multiplication.dot(nextVector, currentOrthoBaseVector, (byte) -1);
+        nextVector = Multiplication.substract(nextVector, Multiplication.scalar(currentOrthoBaseVector, pseudoAlpha));
+        DataSet<Element> nextOrthoWorkset = orthoIteration.getWorkset().filter(new RichFilterFunction<Element>() {
+            @Override
+            public boolean filter(Element e) throws Exception {
+                int curStep = getIterationRuntimeContext().getSuperstepNumber();
+                return e.getId() == Config.idOfBasis && e.getCol().compareTo(Long.valueOf(curStep)) > 0;
+            }
+        });
+        nextVector = orthoIteration.closeWith(nextVector, nextOrthoWorkset);
+
+        DataSet<Element> nextBeta = nextVector.runOperation(new CreateElementWithL2Norm(Config.idOfTriag)).map(new SetNewBetaRowAndCol());
+        /*
+            ### TBD range check ###
+            this has to be some sort of nextWorkset = ...
+            because emptying the nextWorkset is the only chance of bailing out of the iteration early
+         */
+        // b_i+1 = ||v_i+1||. So this normalizes v_i+1
+        nextVector = Multiplication.scalarInverted(nextVector, nextBeta);
+        /*
+            ### prepare next iteration ###
+         */
+
+        // the next workset consists of v_i, v_i+1 and b_i+1
+        DataSet<Element> nextWorkset = currentVector.union(nextVector.union(nextBeta));
+
+        // in each iteration, we add v_i-1, b_i, and a_i
+        DataSet<Element> solutionSetDelta = nextWorkset.union(previousVector.union(currentBeta.union(currentAlpha)));
+
+        DataSet<Element> result = iteration.closeWith(solutionSetDelta, nextWorkset);
+
+        // return the final result
+        return finalizeLanczos(corpus, result, desiredRank, isSymmetric);
+
+    }
+
+    private static DataSet<Element> finalizeLanczos(DataSet<Element> corpus, DataSet<Element> result, int desiredRank, boolean isSymmetric) {
+        // add last alpha
+        DataSet<Element> lastVector = result.filter(new FilterBasisVector(Long.valueOf(desiredRank)));
+        DataSet<Element> overflowVector = Multiplication.multiply(corpus, lastVector, Config.idOfBasis).runOperation(new IncrementColumn());
+        DataSet<Element> lastAlpha = Multiplication.dot(lastVector, overflowVector, Config.idOfTriag).runOperation(new SetRowAndCol(Long.valueOf(desiredRank), Long.valueOf(desiredRank)));
+        result = result.union(lastAlpha);
+        // duplicate betas
+        result = result.flatMap(new BetaDuplicator());
         return result;
     }
 
-    public static void process(DataSet<Vector> A, int m) {
-        ExecutionEnvironment env = A.getExecutionEnvironment();
 
-        List<VectorElement> aList = new ArrayList<>();
-        List<VectorElement> bList = new ArrayList<>();
-        List<Vector> vList = new ArrayList<>();
-        List<Vector> wList = new ArrayList<>();
-
-        vList.add(Vector.getZeroVector(3, 0));      // v[0] <-- 0-vector
-        vList.add(Vector.getRandomVector(3, 1, 1)); // v[1] <-- Random vector with norm 1
-        bList.add(new VectorElement(0, 0.0));       // b[0] <-- 0.0
-        bList.add(new VectorElement(1, 0.0));       // b[1] <-- 0.0
-
-        // Add an element to the a and w array lists, because you can't create DataSets from empty collections... These
-        // will be filtered out by the filter below.
-        aList.add(new VectorElement(0, 0.0));
-        wList.add(Vector.getZeroVector(0));
-
-        // Convert everything to data sets. For a and w, produce empty data sets by filtering out all elements.
-        DataSet<VectorElement> a = env.fromCollection(aList).filter(element -> false);
-        DataSet<VectorElement> b = env.fromCollection(bList);
-        DataSet<Vector> v = env.fromCollection(vList);
-        DataSet<Vector> w = env.fromCollection(wList).filter(vector -> false);
-
-        for (int i = 1; i <= m; i++) {
-            int j = i; // We need the current index as an 'effectively final' value for use in lambda expressions...
-
-            // Get vj by filtering out all v vectors with an index != j.
-            DataSet<Vector> vj = v.filter(vector -> vector.getIndex() == j);
-            vj.writeAsText(Config.getTmpOutput() + "v_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
-
-            // w[j] <-- A * v[j]
-            DataSet<Vector> wj = A.groupBy("index").reduceGroup(new DotProduct())
-                    .withBroadcastSet(vj, "otherVector")
-                    .reduceGroup(new VectorElementsToSingleVector(i));
-            wj.writeAsText(Config.getTmpOutput() + "w_" + i + "_1.out", FileSystem.WriteMode.OVERWRITE);
-
-            // a[j] <-- w[j] * v[j]
-            DataSet<VectorElement> aj = wj.reduceGroup(new DotProduct())
-                    .withBroadcastSet(vj, "otherVector");
-            a = a.union(aj);
-
-            if (i == m) {
-                w = w.union(wj);
-            }
-            else {
-
-                // ajVj <-- a[j] * v[j]
-                DataSet<Vector> ajVj = vj.reduceGroup(new VectorScalarMultiplication())
-                        .withBroadcastSet(aj, "scalar");
-
-                // bjVjMinus1 <-- b[j] * v[j-1]
-                DataSet<Vector> bjVjMinus1 = v.filter(vector -> vector.getIndex() == j - 1)
-                        .reduceGroup(new VectorScalarMultiplication())
-                        .withBroadcastSet(b.filter(element -> element.getIndex() == j), "scalar");
-
-                // wj <-- wj - ajVj - bjVjMinus1
-                // TODO: Is this calculation correct?
-                wj = wj.reduceGroup(new VectorSubtraction())
-                        .withBroadcastSet(ajVj, "otherVector")
-                        .reduceGroup(new VectorSubtraction())
-                        .withBroadcastSet(bjVjMinus1, "otherVector");
-                w = w.union(wj);
-
-                // b[j+1] <-- l2norm(w[j])
-                DataSet<VectorElement> bjPlus1 = wj.reduceGroup(new GetVectorNorm())
-                        .withBroadcastSet(env.fromElements(j + 1), "index")
-                        .withBroadcastSet(env.fromElements(2), "norm");
-                b = b.union(bjPlus1);
-
-                // v[j+1] <-- w[j] / b[j+1]
-                DataSet<Vector> vjPlus1 = wj.reduceGroup(new VectorScalarDivision())
-                        .withBroadcastSet(bjPlus1, "scalar");
-
-                // orthogonalize:
-                // for k .. i do
-                //   v[j+1] <-- v[j+1] - (v[k] . v[j+1]) * v[k]
-                for(int k=1; k<=j; k++) {
-                    int l=k;
-                    DataSet<Vector> vk = v.filter(vector -> vector.getIndex() == l);
-                    // gram-schmitt
-                    vjPlus1 = vjPlus1.cross(vk).with((v1, v2) -> v1.minus(v2.times(v2.dot(v1))));
-                }
-                v = v.union(vjPlus1);
-                v.writeAsText(Config.getTmpOutput() + "v__" + j + ".out", FileSystem.WriteMode.OVERWRITE);
-
-                // TODO: If v[j+1] is not orthogonal to v[j] OR v[j+1] already exists in v, mark v[j+1] as "spurious".
-
-                // TODO: Remove test outputs!
-                vj.writeAsText(Config.getTmpOutput() + "v_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
-                wj.writeAsText(Config.getTmpOutput() + "w_" + i + "_2.out", FileSystem.WriteMode.OVERWRITE);
-                aj.writeAsText(Config.getTmpOutput() + "a_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
-                ajVj.writeAsText(Config.getTmpOutput() + "ajVj_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
-                bjVjMinus1.writeAsText(Config.getTmpOutput() + "bjVjMinus1_" + i + ".out",
-                        FileSystem.WriteMode.OVERWRITE);
-                bjPlus1.writeAsText(Config.getTmpOutput() + "bjPlus1_" + i + ".out",
-                        FileSystem.WriteMode.OVERWRITE);
-                vjPlus1.writeAsText(Config.getTmpOutput() + "vjPlus1_" + i + ".out",
-                        FileSystem.WriteMode.OVERWRITE);
-            }
-        }
-
-        // TODO: wm <-- A  * vm
-        // TODO: am <-- wm * vm
-
-        DataSet<Tuple3<Integer,Integer,Double>> dots = v.reduceGroup(new GroupReduceFunction<Vector, Tuple3<Integer,Integer,Double>>() {
-            List<Vector> vectors = new ArrayList<Vector>();
-            @Override
-            public void reduce(Iterable<Vector> values, org.apache.flink.util.Collector<Tuple3<Integer,Integer,Double>> out) throws Exception {
-                for(Vector v : values) {
-                    vectors.add(v);
-
-                }
-                System.out.println(vectors);
-                for(Vector v1 : vectors) {
-                    for(Vector v2 : vectors) {
-                        if(v1.getIndex() <= v2.getIndex()) {
-                            Tuple3<Integer, Integer, Double> res = new Tuple3<Integer, Integer, Double>(v1.getIndex(), v2.getIndex(), v1.dot(v2));
-                            out.collect(res);
-                        }
-                    }
-                }
-            }
-        });
-        dots.writeAsText(Config.getTmpOutput() + "dots.out", FileSystem.WriteMode.OVERWRITE);
-
-        v.writeAsText(Config.getTmpOutput() + "v.out", FileSystem.WriteMode.OVERWRITE);
-        w.writeAsText(Config.getTmpOutput() + "w.out", FileSystem.WriteMode.OVERWRITE);
-        a.writeAsText(Config.getTmpOutput() + "a.out", FileSystem.WriteMode.OVERWRITE);
-        b.writeAsText(Config.getTmpOutput() + "b.out", FileSystem.WriteMode.OVERWRITE);
-
-
-
-        // TODO: Return something useful! Probably two data sets containing Tmm and Vm, respectively...
-    }
 }
