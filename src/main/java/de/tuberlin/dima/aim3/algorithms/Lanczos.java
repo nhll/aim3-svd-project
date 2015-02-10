@@ -50,9 +50,17 @@ public final class Lanczos {
             // w[j] <-- A * v[j]
             DataSet<Vector> wj = A.groupBy("index").reduceGroup(new DotProduct())
                                   .withBroadcastSet(vj, "otherVector")
-                                  .reduceGroup(new VectorElementsToSingleVector(i))
-                                  .reduceGroup(new VectorScalarDivision())
-                                  .withBroadcastSet(scaleFactor, "scalar");
+                                  .reduceGroup(new VectorElementsToSingleVector(i));
+
+            // In the first iteration, store the scale factor.
+            if (j == 1) {
+                scaleFactor = wj.reduceGroup(new GetVectorNormAsDouble())
+                                .withBroadcastSet(env.fromElements(2), "norm");
+            } else {
+                // Mahout-style scaling of wj: dividing wj by the scale factor.
+                wj = wj.reduceGroup(new VectorScalarDivision())
+                       .withBroadcastSet(scaleFactor, "scalar");
+            }
 
             // a[j] <-- w[j] * v[j]
             DataSet<VectorElement> aj = wj.reduceGroup(new DotProduct())
@@ -62,7 +70,6 @@ public final class Lanczos {
             if (i == m) {
                 w = w.union(wj);
             } else {
-
                 // ajVj <-- a[j] * v[j]
                 DataSet<Vector> ajVj = vj.reduceGroup(new VectorScalarMultiplication())
                                          .withBroadcastSet(aj, "scalar");
@@ -73,24 +80,30 @@ public final class Lanczos {
                                               .withBroadcastSet(b.filter(element -> element.getIndex() == j), "scalar");
 
                 // wj <-- wj - ajVj - bjVjMinus1
-                // TODO: Is this calculation correct?
                 wj = wj.reduceGroup(new VectorSubtraction())
                        .withBroadcastSet(ajVj, "otherVector")
                        .reduceGroup(new VectorSubtraction())
                        .withBroadcastSet(bjVjMinus1, "otherVector");
-                w = w.union(wj);
+
+                // Orthogonalization according to the mahout source code.
+                for (int k = 0; k < j; k++) {
+                    final int l = k;
+                    DataSet<Vector> vk = v.filter(vec -> vec.getIndex() == l);
+                    // alpha = wj * vk
+                    DataSet<VectorElement> alpha = wj.reduceGroup(new DotProduct())
+                                                     .withBroadcastSet(vk, "otherVector");
+                    // wj = wj - alpha * vk
+                    DataSet<Vector> alphaV = v.reduceGroup(new VectorScalarMultiplication())
+                                              .withBroadcastSet(alpha, "scalar");
+                    wj = wj.reduceGroup(new VectorSubtraction())
+                           .withBroadcastSet(alphaV, "otherVector");
+                }
 
                 // b[j+1] <-- l2norm(w[j])
                 DataSet<VectorElement> bjPlus1 = wj.reduceGroup(new GetVectorNorm())
                                                    .withBroadcastSet(env.fromElements(j + 1), "index")
                                                    .withBroadcastSet(env.fromElements(2), "norm");
                 b = b.union(bjPlus1);
-
-                // In the first iteration, store the scale factor.
-                if (j == 1) {
-                    scaleFactor = wj.reduceGroup(new GetVectorNormAsDouble())
-                                    .withBroadcastSet(env.fromElements(2), "norm");
-                }
 
                 // v[j+1] <-- w[j] / b[j+1]
                 DataSet<Vector> vjPlus1 = wj.reduceGroup(new VectorScalarDivision(true))
@@ -99,12 +112,12 @@ public final class Lanczos {
                 // orthogonalize:
                 // for k .. i do
                 //   v[j+1] <-- v[j+1] - (v[k] . v[j+1]) * v[k]
-                for (int k = 1; k <= j; k++) {
-                    int l = k;
-                    DataSet<Vector> vk = v.filter(vector -> vector.getIndex() == l);
-                    // gram-schmitt
-                    vjPlus1 = vjPlus1.cross(vk).with((v1, v2) -> v1.minus(v2.times(v2.dot(v1))));
-                }
+                //                for (int k = 1; k <= j; k++) {
+                //                    int l = k;
+                //                    DataSet<Vector> vk = v.filter(vector -> vector.getIndex() == l);
+                //                    // gram-schmitt
+                //                    vjPlus1 = vjPlus1.cross(vk).with((v1, v2) -> v1.minus(v2.times(v2.dot(v1))));
+                //                }
                 v = v.union(vjPlus1);
             }
         }

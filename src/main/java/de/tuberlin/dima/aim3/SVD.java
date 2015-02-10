@@ -23,7 +23,7 @@ import java.util.Map;
 
 public class SVD {
 
-    private static final int LANCZOS_ITERATIONS = 6;
+    private static final int LANCZOS_ITERATIONS = 5;
 
     public static void main(String[] args) throws Exception {
         // Set default locale to US so that double values are displayed with a dot instead of a comma.
@@ -106,8 +106,9 @@ public class SVD {
                 singularValues.put(row, e);
             }
 
-            System.out.println(singularVectors.toString());
-            System.out.println(singularValues.toString());
+            System.out.println("\nEigenvectors");
+            System.out.println("============");
+            singularVectors.forEach((index, vec) -> System.out.println("[" + index + "]: " + vec.toString()));
         } catch (Exception e) {
             System.out.println(e);
         }
