@@ -299,6 +299,7 @@ public class Vector implements Indexed {
         for (int i = 0; i < elements.size(); i++) {
             valueStrings[i] = String.format("%.4f", elements.get(i));
         }
-        return "(" + index + ") [" + StringUtils.join(", ", valueStrings) + "]";
+//        return "(" + index + ") [" + StringUtils.join(", ", valueStrings) + "]";
+        return index + "\t\t" + StringUtils.join("\t", valueStrings);
     }
 }
