@@ -1,11 +1,13 @@
 package de.tuberlin.dima.aim3;
 
 import de.tuberlin.dima.aim3.algorithms.Lanczos;
+import de.tuberlin.dima.aim3.datatypes.LanczosResult;
 import de.tuberlin.dima.aim3.datatypes.Vector;
 import de.tuberlin.dima.aim3.operators.MatrixReader;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
+import org.apache.flink.core.fs.FileSystem;
 
 import java.util.Locale;
 
@@ -27,7 +29,13 @@ public class SVD {
         DataSet<Vector> matrix = inputMatrix.map(new MatrixReader());
 
         // Apply the Lanczos algorithm to our input matrix and collect the result.
-        Lanczos.process(matrix, LANCZOS_ITERATIONS);
+        LanczosResult lanczosResult = Lanczos.process(matrix, LANCZOS_ITERATIONS);
+
+        DataSet<Vector> Tmm = lanczosResult.getTmm();
+        DataSet<Vector> Vm = lanczosResult.getVm();
+
+        Tmm.writeAsText(Config.getTmpOutput() + "Tmm", FileSystem.WriteMode.OVERWRITE);
+        Vm.writeAsText(Config.getTmpOutput() + "Vm", FileSystem.WriteMode.OVERWRITE);
 
         // TODO: Extract the tridiagonal matrix Tmm and the matrix containing all Lanczos vectors Vm from the result.
         // TODO: Apply the QR algorithm (?) to Tmm and collect the resulting eigenvalues and eigenvectors of Tmm.
