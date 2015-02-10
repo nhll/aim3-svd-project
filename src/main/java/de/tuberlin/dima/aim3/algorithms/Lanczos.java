@@ -1,24 +1,16 @@
 package de.tuberlin.dima.aim3.algorithms;
 
 import de.tuberlin.dima.aim3.Config;
+import de.tuberlin.dima.aim3.datatypes.LanczosResult;
 import de.tuberlin.dima.aim3.datatypes.Vector;
 import de.tuberlin.dima.aim3.datatypes.VectorElement;
 import de.tuberlin.dima.aim3.operators.*;
-
-import org.apache.flink.api.common.functions.CrossFunction;
-import org.apache.flink.api.common.functions.GroupReduceFunction;
-import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.core.fs.FileSystem;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
 
 public final class Lanczos {
 
@@ -26,7 +18,7 @@ public final class Lanczos {
         // Private constructor pretty much makes this class static.
     }
 
-    public static void process(DataSet<Vector> A, int m) {
+    public static LanczosResult process(DataSet<Vector> A, int m) {
         ExecutionEnvironment env = A.getExecutionEnvironment();
 
         List<VectorElement> aList = new ArrayList<>();
@@ -55,110 +47,116 @@ public final class Lanczos {
 
             // Get vj by filtering out all v vectors with an index != j.
             DataSet<Vector> vj = v.filter(vector -> vector.getIndex() == j);
-            vj.writeAsText(Config.getTmpOutput() + "v_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
 
             // w[j] <-- A * v[j]
             DataSet<Vector> wj = A.groupBy("index").reduceGroup(new DotProduct())
-                    .withBroadcastSet(vj, "otherVector")
-                    .reduceGroup(new VectorElementsToSingleVector(i));
-            wj.writeAsText(Config.getTmpOutput() + "w_" + i + "_1.out", FileSystem.WriteMode.OVERWRITE);
+                                  .withBroadcastSet(vj, "otherVector")
+                                  .reduceGroup(new VectorElementsToSingleVector(i));
 
             // a[j] <-- w[j] * v[j]
             DataSet<VectorElement> aj = wj.reduceGroup(new DotProduct())
-                    .withBroadcastSet(vj, "otherVector");
+                                          .withBroadcastSet(vj, "otherVector");
             a = a.union(aj);
 
             if (i == m) {
                 w = w.union(wj);
-            }
-            else {
+            } else {
 
                 // ajVj <-- a[j] * v[j]
                 DataSet<Vector> ajVj = vj.reduceGroup(new VectorScalarMultiplication())
-                        .withBroadcastSet(aj, "scalar");
+                                         .withBroadcastSet(aj, "scalar");
 
                 // bjVjMinus1 <-- b[j] * v[j-1]
                 DataSet<Vector> bjVjMinus1 = v.filter(vector -> vector.getIndex() == j - 1)
-                        .reduceGroup(new VectorScalarMultiplication())
-                        .withBroadcastSet(b.filter(element -> element.getIndex() == j), "scalar");
+                                              .reduceGroup(new VectorScalarMultiplication())
+                                              .withBroadcastSet(b.filter(element -> element.getIndex() == j), "scalar");
 
                 // wj <-- wj - ajVj - bjVjMinus1
                 // TODO: Is this calculation correct?
                 wj = wj.reduceGroup(new VectorSubtraction())
-                        .withBroadcastSet(ajVj, "otherVector")
-                        .reduceGroup(new VectorSubtraction())
-                        .withBroadcastSet(bjVjMinus1, "otherVector");
+                       .withBroadcastSet(ajVj, "otherVector")
+                       .reduceGroup(new VectorSubtraction())
+                       .withBroadcastSet(bjVjMinus1, "otherVector");
                 w = w.union(wj);
 
                 // b[j+1] <-- l2norm(w[j])
                 DataSet<VectorElement> bjPlus1 = wj.reduceGroup(new GetVectorNorm())
-                        .withBroadcastSet(env.fromElements(j + 1), "index")
-                        .withBroadcastSet(env.fromElements(2), "norm");
+                                                   .withBroadcastSet(env.fromElements(j + 1), "index")
+                                                   .withBroadcastSet(env.fromElements(2), "norm");
                 b = b.union(bjPlus1);
 
                 // v[j+1] <-- w[j] / b[j+1]
                 DataSet<Vector> vjPlus1 = wj.reduceGroup(new VectorScalarDivision())
-                        .withBroadcastSet(bjPlus1, "scalar");
+                                            .withBroadcastSet(bjPlus1, "scalar");
 
                 // orthogonalize:
                 // for k .. i do
                 //   v[j+1] <-- v[j+1] - (v[k] . v[j+1]) * v[k]
-                for(int k=1; k<=j; k++) {
-                    int l=k;
+                for (int k = 1; k <= j; k++) {
+                    int l = k;
                     DataSet<Vector> vk = v.filter(vector -> vector.getIndex() == l);
                     // gram-schmitt
                     vjPlus1 = vjPlus1.cross(vk).with((v1, v2) -> v1.minus(v2.times(v2.dot(v1))));
                 }
                 v = v.union(vjPlus1);
-                v.writeAsText(Config.getTmpOutput() + "v__" + j + ".out", FileSystem.WriteMode.OVERWRITE);
-
-                // TODO: If v[j+1] is not orthogonal to v[j] OR v[j+1] already exists in v, mark v[j+1] as "spurious".
-
-                // TODO: Remove test outputs!
-                vj.writeAsText(Config.getTmpOutput() + "v_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
-                wj.writeAsText(Config.getTmpOutput() + "w_" + i + "_2.out", FileSystem.WriteMode.OVERWRITE);
-                aj.writeAsText(Config.getTmpOutput() + "a_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
-                ajVj.writeAsText(Config.getTmpOutput() + "ajVj_" + i + ".out", FileSystem.WriteMode.OVERWRITE);
-                bjVjMinus1.writeAsText(Config.getTmpOutput() + "bjVjMinus1_" + i + ".out",
-                        FileSystem.WriteMode.OVERWRITE);
-                bjPlus1.writeAsText(Config.getTmpOutput() + "bjPlus1_" + i + ".out",
-                        FileSystem.WriteMode.OVERWRITE);
-                vjPlus1.writeAsText(Config.getTmpOutput() + "vjPlus1_" + i + ".out",
-                        FileSystem.WriteMode.OVERWRITE);
             }
         }
 
-        // TODO: wm <-- A  * vm
-        // TODO: am <-- wm * vm
-
-        DataSet<Tuple3<Integer,Integer,Double>> dots = v.reduceGroup(new GroupReduceFunction<Vector, Tuple3<Integer,Integer,Double>>() {
-            List<Vector> vectors = new ArrayList<Vector>();
-            @Override
-            public void reduce(Iterable<Vector> values, org.apache.flink.util.Collector<Tuple3<Integer,Integer,Double>> out) throws Exception {
-                for(Vector v : values) {
-                    vectors.add(v);
-
-                }
-                System.out.println(vectors);
-                for(Vector v1 : vectors) {
-                    for(Vector v2 : vectors) {
-                        if(v1.getIndex() <= v2.getIndex()) {
-                            Tuple3<Integer, Integer, Double> res = new Tuple3<Integer, Integer, Double>(v1.getIndex(), v2.getIndex(), v1.dot(v2));
-                            out.collect(res);
-                        }
-                    }
-                }
-            }
-        });
-        dots.writeAsText(Config.getTmpOutput() + "dots.out", FileSystem.WriteMode.OVERWRITE);
-
-        v.writeAsText(Config.getTmpOutput() + "v.out", FileSystem.WriteMode.OVERWRITE);
-        w.writeAsText(Config.getTmpOutput() + "w.out", FileSystem.WriteMode.OVERWRITE);
-        a.writeAsText(Config.getTmpOutput() + "a.out", FileSystem.WriteMode.OVERWRITE);
-        b.writeAsText(Config.getTmpOutput() + "b.out", FileSystem.WriteMode.OVERWRITE);
-
+        // TODO: Remove this when not needed anymore. This is for testing orthogonality of lanzcos vectors.
+        //
+        //        DataSet<Tuple3<Integer, Integer, Double>> dots =
+        //                v.reduceGroup(new GroupReduceFunction<Vector, Tuple3<Integer, Integer, Double>>() {
+        //                    List<Vector> vectors = new ArrayList<Vector>();
+        //
+        //                    @Override
+        //                    public void reduce(Iterable<Vector> values,
+        //                                       org.apache.flink.util.Collector<Tuple3<Integer, Integer, Double>> out)
+        //                            throws Exception {
+        //                        for (Vector v : values) {
+        //                            vectors.add(v);
+        //                        }
+        //                        System.out.println(vectors);
+        //                        for (Vector v1 : vectors) {
+        //                            for (Vector v2 : vectors) {
+        //                                if (v1.getIndex() <= v2.getIndex()) {
+        //                                    Tuple3<Integer, Integer, Double> res =
+        //                                            new Tuple3<Integer, Integer, Double>(v1.getIndex(), v2.getIndex(),
+        //                                                                                 v1.dot(v2));
+        //                                    out.collect(res);
+        //                                }
+        //                            }
+        //                        }
+        //                    }
+        //                });
+        //        dots.writeAsText(Config.getTmpOutput() + "dots.out", FileSystem.WriteMode.OVERWRITE);
 
 
-        // TODO: Return something useful! Probably two data sets containing Tmm and Vm, respectively...
+        // Construct Tmm from the a and b values.
+        //
+        // First, we will only add the a_i and b_i values to each row vector. In order to add the b_i+1 values
+        // to the row vectors as well, we will use a copy of b with all indices decremented, so that we're able
+        // to join it properly with the temporary Tmm that only contains a_i and b_i values. During this second
+        // join, the last row vector will be omitted, because its index does not match any of the decremented b
+        // indices anymore. To work around this, we will filter out the last row of our temporary Tmm matrix and
+        // add it to the final Tmm matrix in the end (as the last row wouldn't be changed by the second join anyway).
+        DataSet<Vector> Tmm = a.join(b)
+                               .where("index").equalTo("index")
+                               .with(new AlphaBetaJoiner())
+                               .withBroadcastSet(env.fromElements(m), "colCount");
+
+        // Get the temporary Tmm's last row vector so that we don't lose it.
+        DataSet<Vector> lastTmmRow = Tmm.filter(vec -> vec.getIndex() == m - 1);
+
+        // Join a copy of the b values with decremented indices with the temporary Tmm matrix in order to add all
+        // the b_i+1 values to each row vector. The last row vector of Tmm is lost during this step, so we have to
+        // manually re-append it afterwards.
+        DataSet<VectorElement> bDecrementedIndices = b.map(e -> new VectorElement(e.getIndex() - 2, e.getValue()));
+        Tmm = Tmm.join(bDecrementedIndices)
+                 .where("index").equalTo("index")
+                 .with(new BetaExtender())
+                 .union(lastTmmRow);
+
+        // Return two data sets containing Tmm and the Lanczos vectors, respectively.
+        return new LanczosResult(Tmm, v);
     }
 }

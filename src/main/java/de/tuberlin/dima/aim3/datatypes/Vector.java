@@ -2,12 +2,15 @@ package de.tuberlin.dima.aim3.datatypes;
 
 import org.apache.hadoop.util.StringUtils;
 
-import java.util.*;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 import java.util.stream.IntStream;
 
 // TODO: Implement vector algebra
 // TODO: Class documentation comment
-public class Vector implements Indexed  {
+public class Vector implements Indexed {
 
     /** This value is used for indices of vectors that are not part of a matrix and that thus have no indices. */
     public static final int NOINDEX = -1;
@@ -116,8 +119,8 @@ public class Vector implements Indexed  {
 
     /**
      * Same as {@link #Vector(java.util.AbstractMap, int)}, but for constructing a vector that's not part of a matrix
-     * and thus does not have an index value. Using this constructor, the vector's index will be set to
-     * {@link #NOINDEX Vector.NOINDEX}.
+     * and thus does not have an index value. Using this constructor, the vector's index will be set to {@link #NOINDEX
+     * Vector.NOINDEX}.
      *
      * @param elements A set of VectorElement objects representing the vector's values
      * @see #Vector(java.util.AbstractMap, int)
@@ -296,6 +299,6 @@ public class Vector implements Indexed  {
         for (int i = 0; i < elements.size(); i++) {
             valueStrings[i] = String.format("%.4f", elements.get(i));
         }
-        return "[" + StringUtils.join(", ", valueStrings) + "]";
+        return "(" + index + ") [" + StringUtils.join(", ", valueStrings) + "]";
     }
 }
