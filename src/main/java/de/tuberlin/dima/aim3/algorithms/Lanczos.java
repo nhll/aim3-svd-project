@@ -1,13 +1,11 @@
 package de.tuberlin.dima.aim3.algorithms;
 
-import de.tuberlin.dima.aim3.Config;
 import de.tuberlin.dima.aim3.datatypes.LanczosResult;
 import de.tuberlin.dima.aim3.datatypes.Vector;
 import de.tuberlin.dima.aim3.datatypes.VectorElement;
 import de.tuberlin.dima.aim3.operators.*;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.core.fs.FileSystem;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,8 +24,8 @@ public final class Lanczos {
         List<Vector> vList = new ArrayList<>();
         List<Vector> wList = new ArrayList<>();
 
-        vList.add(Vector.getZeroVector(3, 0));      // v[0] <-- 0-vector
-        vList.add(Vector.getRandomVector(3, 1, 1)); // v[1] <-- Random vector with norm 1
+        vList.add(Vector.getZeroVector(6, 0));      // v[0] <-- 0-vector
+        vList.add(Vector.getRandomVector(6, 1, 1)); // v[1] <-- Random vector with norm 1
         bList.add(new VectorElement(0, 0.0));       // b[0] <-- 0.0
         bList.add(new VectorElement(1, 0.0));       // b[1] <-- 0.0
 
@@ -41,6 +39,7 @@ public final class Lanczos {
         DataSet<VectorElement> b = env.fromCollection(bList);
         DataSet<Vector> v = env.fromCollection(vList);
         DataSet<Vector> w = env.fromCollection(wList).filter(vector -> false);
+        DataSet<Double> scaleFactor = env.fromElements(1.0);
 
         for (int i = 1; i <= m; i++) {
             int j = i; // We need the current index as an 'effectively final' value for use in lambda expressions...
@@ -51,7 +50,9 @@ public final class Lanczos {
             // w[j] <-- A * v[j]
             DataSet<Vector> wj = A.groupBy("index").reduceGroup(new DotProduct())
                                   .withBroadcastSet(vj, "otherVector")
-                                  .reduceGroup(new VectorElementsToSingleVector(i));
+                                  .reduceGroup(new VectorElementsToSingleVector(i))
+                                  .reduceGroup(new VectorScalarDivision())
+                                  .withBroadcastSet(scaleFactor, "scalar");
 
             // a[j] <-- w[j] * v[j]
             DataSet<VectorElement> aj = wj.reduceGroup(new DotProduct())
@@ -85,8 +86,14 @@ public final class Lanczos {
                                                    .withBroadcastSet(env.fromElements(2), "norm");
                 b = b.union(bjPlus1);
 
+                // In the first iteration, store the scale factor.
+                if (j == 1) {
+                    scaleFactor = wj.reduceGroup(new GetVectorNormAsDouble())
+                                    .withBroadcastSet(env.fromElements(2), "norm");
+                }
+
                 // v[j+1] <-- w[j] / b[j+1]
-                DataSet<Vector> vjPlus1 = wj.reduceGroup(new VectorScalarDivision())
+                DataSet<Vector> vjPlus1 = wj.reduceGroup(new VectorScalarDivision(true))
                                             .withBroadcastSet(bjPlus1, "scalar");
 
                 // orthogonalize:
@@ -129,7 +136,6 @@ public final class Lanczos {
         //                    }
         //                });
         //        dots.writeAsText(Config.getTmpOutput() + "dots.out", FileSystem.WriteMode.OVERWRITE);
-
 
         // Construct Tmm from the a and b values.
         //
