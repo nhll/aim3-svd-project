@@ -22,3 +22,6 @@ results
 .settings/
 
 data/out
+
+*.pdf
+.texpadtmp
