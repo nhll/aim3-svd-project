@@ -91,10 +91,21 @@ algorithm in Flink.
 
 \subsection{Using Mahout's Lanczos Solver for Hadoop}
 
-% - Idea: Implement interface that Mahout's LanczosSolver uses 
-%    --> don't actually implement lanczos in flink
+% - During research phase we studied documentation and source code of Mahout ML library
+%     --> They have fully implemented SVD using Lanczos algorithm (LanczosSolver)
+%         --> Idea: Implement all interfaces (Matrix, Vector, ...), that LanczosSolver 
+%             uses, for Flink --> Then simply use LanczosSolver to run Lanczos algorithm
+%             on our own matrices
+%             --> Don't actually implement Lanczos in Flink, but rather implement "add-on"
+%                 that would allow LanczosSolver to be run on Flink cluster
+%             --> Main benefits of that code reuse:
+%                 - High confidence in correctness of implementation
+%                 - Less work, not reinventing the wheel
 
 \subsection{Implementing an Iterative, Loop-based Construction}
 
 % --> Flink API/Optimizer doesn't know about iteration
 % --> Briefly explain Flink execution strategy/graph (Optimizer)
+
+
+
