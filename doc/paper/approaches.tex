@@ -85,11 +85,11 @@ contained in the solution set after the last iteration step has terminated (4). 
 % ---------------------------------------------
 
 As described in section \ref{sec:lanczos}, every iteration of the Lanczos algorithm only needs
-(parts of) the result of the preceding iteration. Also, during every iteration, the final result
-is only appended by small parts and none of its existing parts are modified in any way. This
-scheme seems to perfectly match the way Flink's delta iterations work, which is why we decided
-that delta iterations are more appropriate than standard iterations for implementing the Lanczos
-algorithm in Flink.
+small parts of the existing final result as well as (parts of) the intermediate results of the
+preceding iteration. Also, during every iteration, the final result is only appended by small
+parts and none of its existing parts are modified in any way. This scheme seems to perfectly
+match the way Flink's delta iterations work, which is why we decided that delta iterations are
+more appropriate than standard iterations for implementing the Lanczos algorithm in Flink.
 
 
 % Approach: Using Mahout's LanczosSolver
@@ -135,18 +135,18 @@ iteration constructs, but by using ordinary Java loops instead. Rather than lett
 internals deal with work set and solution set (see \ref{ssec:delta_iterations}), we figured we
 could manually manage the various data sets needed for the final results, for intermediate
 results that are needed in the next iteration as well as for temporary data that is only needed
-'locally' within a single iteration.
+locally within a single iteration.
 
 % Brief explanation of Flink execution flow
 % -----------------------------------------
 
 In order to understand the potential downsides of this approach, a basic understanding of how
 Flink programs are executed is necessary. When running a Flink program, that program is not
-executed directly\footnote{Of course, the bytecode that results from compiling said Flink
-program is executed directly, however Flink doesn't execute the data flow specified by the
-program immediately.}. Instead, Flink compiles the program to an execution plan, which is then
-executed [4]. Before executing said plan, which is basically a graph representing the program's
-whole data flow, Flink tries to optimize it for speed and/or storage performance.
+executed directly\footnote{Of course, the bytecode that results from compiling the program is
+executed directly, however Flink doesn't execute the data flow specified by the program
+immediately.}. Instead, Flink compiles the program to an execution plan, which is then executed
+[4]. Before executing said plan, which is basically a graph representing the program's whole
+data flow, Flink tries to optimize it for speed and/or storage performance.
 
 % Impact of Flink execution flow on loop-based approach
 % -----------------------------------------------------
