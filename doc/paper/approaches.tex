@@ -28,19 +28,6 @@ would we choose the former over the latter?
 %    --> Idiomatic way
 %    --> Two variants: Iterate + Delta Iterate
 %        --> For both: Define step function that will be invoked repeatedly until termination condition is reached
-%        --> Iterate:
-%            - For simple iterations
-%            - Step function takes entire input and computes next version of partial solution
-%            - Final result = partial solution of the last iteration
-%        --> Delta Iterate:
-%            - Specifically designed for incremental iterations (= iterations that only modify small parts
-%              of their solution in every iteration and by that evolve the solution instead of fully recomputing it
-%              in every iteration)
-%                --> More effective, because each iteration operates only on small subset of data
-%            - Each step...
-%                ...takes current work set and produces new work set
-%                ...updates part of the solution set
-%            - Final result = solution set after last iteration
 
 Flink provides an iteration operator specifically for the purpose of implementing
 iterative algorithms, as these kinds of algorithms occur in many domains of data
@@ -53,6 +40,11 @@ standard iteration) and \textbf{Delta Iterate}. The general idea of both of thes
 is that the programmer defines a step function that will be invoked repeatedly on the
 current state of the data until a specified termination condition is reached. [1]
 
+%        --> Iterate:
+%            - For simple iterations
+%            - Step function takes entire input and computes next version of partial solution
+%            - Final result = partial solution of the last iteration
+
 % TODO: Are we allowed to use images from the Flink documentation?
 \begin{figure}[h]
 	\centering
@@ -63,11 +55,21 @@ current state of the data until a specified termination condition is reached. [1
 \end{figure}
 
 Intended to be used for rather simple forms of iteration, the step function (2) of the 
-\textbf{Iterate} operator pictured in figure \ref{fig:iterate_operator} always takes the 
+\textbf{Iterate} operator, pictured in figure \ref{fig:iterate_operator}, always takes the 
 entire input and computes the next partial solution from that (3). While the first step's input 
 is the initial data set specified by the programmer (1), every step that follows consumes the 
 partial solution produced by the preceding step. The Iterate operator's final result is simply 
 the partial solution produced by the very last step (4). [1]
+
+%        --> Delta Iterate:
+%            - Specifically designed for incremental iterations (= iterations that only modify small parts
+%              of their solution in every iteration and by that evolve the solution instead of fully recomputing it
+%              in every iteration)
+%                --> More effective, because each iteration operates only on small subset of data
+%            - Each step...
+%                ...takes current work set and produces new work set
+%                ...updates part of the solution set
+%            - Final result = solution set after last iteration
 
 \begin{figure}[h]
 	\centering
@@ -77,11 +79,32 @@ the partial solution produced by the very last step (4). [1]
 	\label{fig:delta_iterate_operator}
 \end{figure}
 
+On the other hand, Flink's \textbf{Delta Iterate} operator, visualized in figure 
+\ref{fig:delta_iterate_operator}, is specifically designed for implementing incremental
+iterations that only modify small parts of the final result in every iteration step and that 
+thus continually evolve the final result rather than fully recomputing it in every step.
+Compared to standard iterations, delta iterations bring a performance benefit to the table,
+as each of their steps only operates on a small subset of the data. Flink's delta iterations
+use a work set and a solution set. While every work set instance only exists for one single
+iteration, there is only one instance of the solution set whose state is persisted throughout 
+all the iteration steps. The initial values of these two sets (1) are specified by the 
+programmer. In every iteration, the step function (2) takes the current work set and the current
+state of the solution set as its input and produces a new work set while also (optionally)
+updating the contents of the solution set (3). The final result of a delta iteration is
+contained in the solution set after the last iteration step has terminated (4). [1]
+
 % - In every iteration of Lanczos algorithm...
 %     ...only parts of the result of previous iteration are needed
 %     ...only small parts are added to the final result
 %     ...no existing parts of final result are modified
 % ==> This matches intention of delta iterations perfectly
+
+As described in section \ref{sec:lanczos}, every iteration of the Lanczos algorithm only needs
+(parts of) the result of the preceding iteration. Also, during every iteration, the final result
+is only appended by small parts and none of its existing parts are modified in any way. This
+scheme seems to perfectly match the way Flink's delta iterations work, which is why we decided
+that delta iterations are more appropriate than standard iterations for implementing the Lanczos
+algorithm in Flink.
 
 \subsection{Using Mahout's Lanczos Solver for Hadoop}
 
