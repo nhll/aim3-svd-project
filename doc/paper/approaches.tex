@@ -13,6 +13,7 @@ without using delta iterations to model the algorithm's iterative nature.
 % ==========================
 
 \subsection{Using Flink Delta Iterations}
+\label{ssec:delta_iterations}
 
 While planning the implementation part of our project, we consulted both the official
 Flink 0.8 documentation [1] as well as the Flink community directly (mainly through
@@ -119,8 +120,24 @@ quickly and on improving other parts of the system.
 
 \subsection{Implementing an Iterative, Loop-based Construction}
 
-% --> Flink API/Optimizer doesn't know about iteration
-% --> Briefly explain Flink execution strategy/graph (Optimizer)
+% - Had previously never been exposed to delta iterations (described in <REF>) in practice
+%     --> Most intuitive approach for us (and first one that came to our minds):
+%         - Model data flow the way that we were used to from previous exercises
+%         - Don't use Flink constructs to model iteration, but instead use ordinary Java loops
+%             --> 'global' data sets for final results (and for intermediate results needed in
+%                 following iterations) and local data sets for data temporarily needed in a
+%                 single iteration
+%             --> In each iteration, append stuff manually to 'global' data sets
+
+% - Brief explanation of a Flink program's execution flow, because important to understand
+%   the potential downsides of this approach:
+%     - Flink program is not executed directly
+%     - Instead, Flink compiles program to execution plan that's optimized by the Flink optimizer
+%         --> Then executes that plan
+%         --> Execution plan is basically a graph representing the program's whole data flow
+%     --> Potential problem with this approach: Flink compiler/optimizer doesn't know about the iteration
+%         --> Cannot optimize it
+%             --> Our expectation: This approach doesn't bring best performance possible
 
 
 
