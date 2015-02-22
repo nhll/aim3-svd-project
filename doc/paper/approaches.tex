@@ -8,6 +8,7 @@ Mahout's implementation of the Lanczos algorithm for the Hadoop framework. The t
 possibility we found is to still implement the actual algorithm manually in Flink, but
 without using delta iterations to model the algorithm's iterative nature.
 
+
 % Approach: Delta Iterations
 % ==========================
 
@@ -89,20 +90,36 @@ scheme seems to perfectly match the way Flink's delta iterations work, which is 
 that delta iterations are more appropriate than standard iterations for implementing the Lanczos
 algorithm in Flink.
 
-\subsection{Using Mahout's Lanczos Solver for Hadoop}
 
-% - During research phase we studied documentation and source code of Mahout ML library
-%     --> They have fully implemented SVD using Lanczos algorithm (LanczosSolver)
-%         --> Idea: Implement all interfaces (Matrix, Vector, ...), that LanczosSolver 
-%             uses, for Flink --> Then simply use LanczosSolver to run Lanczos algorithm
-%             on our own matrices
-%             --> Don't actually implement Lanczos in Flink, but rather implement "add-on"
-%                 that would allow LanczosSolver to be run on Flink cluster
-%             --> Main benefits of that code reuse:
-%                 - High confidence in correctness of implementation
-%                 - Less work, not reinventing the wheel
+% Approach: Using Mahout's LanczosSolver
+% ======================================
+
+\subsection{Using Mahout's Implementation of the Lanczos Algorithm}
+
+During the research phase of our project, we studied (amonst others) the documentation [2] and
+the source code [3] of the Apache Mahout machine learning library. It quickly came to our
+attention that Mahout contains a full SVD implementation using the Lanczos algorithm. The
+algorithm itself is implemented in the \texttt{LanczosSolver} class in Mahout's \texttt{math}
+package. At first we only studied this implementation in order to learn more about the way the
+algorithm works as well as for inspiration purposes. Eventually we started to consider reusing
+this existing implementation to run the Lanczos algorithm in Flink.
+
+% Brief description of Mahout approach
+% ------------------------------------
+
+Directly using Mahout's \texttt{LanczosSolver} for our project would include implementing all
+the interfaces and possibly extending most of the classes that are used within the
+\texttt{LanczosSolver} class and then running it on those implementations of ours. That way, we
+wouldn't actually implement the algorithm itself for Flink. Instead, we would implement sort of
+an Add-On that would allow the \texttt{LanczosSolver} to be run on a Flink cluster. The benefits
+of that kind of code reuse include a relatively high confidence in the correctness of the
+algorithm's actual implementation. Also, the efforts that would be saved by not implementing the
+whole algorithm ourselves could potentially be spent on getting things up and running more
+quickly and on improving other parts of the system.
 
 \subsection{Implementing an Iterative, Loop-based Construction}
+
+asd test lol
 
 % --> Flink API/Optimizer doesn't know about iteration
 % --> Briefly explain Flink execution strategy/graph (Optimizer)
