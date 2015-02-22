@@ -25,3 +25,8 @@ data/out
 
 *.pdf
 .texpadtmp
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
