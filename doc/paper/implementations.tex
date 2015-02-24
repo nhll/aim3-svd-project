@@ -55,6 +55,7 @@ description of our Lanczos implementation.
 % ----------------
 
 \subsubsection{Custom Datatypes}
+\label{ssec:custom_datatypes}
 
 As stated earlier, we aimed for a convenient internal API that would make large
 parts of the implementation relatively comfortable for us by hiding
@@ -116,6 +117,7 @@ those two matrices inside the \texttt{LanczosResult} class.
 % ----------------------
 
 \subsubsection{Custom Flink Operators}
+\label{ssec:custom_operators}
 
 Since Flink operates solely on data sets, one has to implement a Flink
 program's data flow by defining custom operators and then invoking those
@@ -124,4 +126,39 @@ purpose of the modules in our \textit{operators} package. Some of these modules
 do calculations on vectors and scalar values, while others only transform
 existing data from one form into another.
 
+The operators \texttt{GetVectorNorm}, \texttt{GetVectorNormAsDouble},
+\texttt{VectorScalarDivision}, \texttt{DotProduct},
+\texttt{VectorScalarMultiplication} and \texttt{VectorScalarSubtraction} are
+basically just wrapper classes that allow all the vector operations described
+in section \ref{ssec:custom_datatypes} to be invoked on data sets in parallel
+(more or less). This is where our custom vector class comes in handy, because
+instead of manually working with instances of Java lists or Flink's tuple data
+types to perform the necessary calculations, these operators can simply use our
+vector API without having to know how the algebraic operations they use are
+actually implemented.
+
+\begin{lstlisting}[label=lst:vector_scalar_multiplication,captionpos=b,caption
+=Implementation of the custom operator for vector-scalar multiplication]
+// (Package definition + imports)
+
+public class VectorScalarMultiplication
+    extends RichGroupReduceFunction<Vector, Vector> {
+    
+  public void reduce(Iterable<Vector> vectors, Collector<Vector> out) {
+    double scalar = getRuntimeContext()
+                      .<VectorElement>getBroadcastVariable("scalar")
+                      .get(0).getValue();
+    vectors.forEach(vector -> out.collect(vector.times(scalar)));
+  }
+}
+\end{lstlisting}
+
+For example, our custom operator for vector-scalar multiplication, which
+extends Flink's \texttt{RichGroupReduceFunction} and is shown in listing
+\ref{lst:vector_scalar_multiplication}, simply uses our vector API's
+\texttt{times()} method to calculate and emit the products of a single
+broadcasted scalar value with all the vectors contained in the data set the
+operator is invoked on. Thanks to the effort initially spent on developing a
+custom vector type, we were able to implement most of the Flink operators we
+needed very easily.
 
