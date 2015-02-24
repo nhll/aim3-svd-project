@@ -162,6 +162,9 @@ operator is invoked on. Thanks to the effort initially spent on developing a
 custom vector type, we were able to implement most of the Flink operators we
 needed very easily.
 
+% Lanczos Algorithm Implementation
+% --------------------------------
+
 \subsubsection{Lanczos Algorithm}
 
 The actual loop-based implementation of the Lanczos algorithm is contained in
@@ -234,8 +237,25 @@ of our custom operators (see \ref{ssec:custom_operators}) to the operation. As
 we used Java 8 for this implementation, we sometimes use lambda expressions
 instead, especially for simple operations like filtering a data set by index.
 
+% Performance Problem
+% -------------------
+
 \subsubsection{Performance Problem}
 
-
+Unfortunately it wasn't until very late in the implementation phase that we
+encountered a serious problem with the loop-based approach. Up until then we
+had only ran the algorithm on a very small test matrix with very few
+iterations for testing purposes. These test runs executed without any problems
+and the results looked promising. However, once we started testing the
+implementation on matrices that were even slightly larger, we noticed
+significant performance issues. Even after very small increases in matrix size
+and iteration count, the program would run a lot slower. We observed that the
+program would start running as usual, but that it would take a lot longer
+before Flink actually started executing the data flow defined by our program.
+Setting the algorithm's iteration count to only 6 iterations, we already hit a
+point where it was practically impossible to see the actual data flow being
+executed, as it would simply take way too long before anything actually
+happened with the data. We will discuss our explanation for this problem in
+section \ref{sec:results}.
 
 

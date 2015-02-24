@@ -2,7 +2,11 @@
 
 \subsection{Dimensionality Reduction and Singular Value Decomposition}
 
-In many applications data can be represented as a matrix that defines a mapping between two feature spaces. As an example a dataset of ratings of users for movies may be considered. As depicted in Figure~\ref{fig:exmpl_matrix}, such a dataset can be modeled as a matrix in which each row represents a user, each column a movie, and each value a rating that a user has given a movie. 
+In many applications data can be represented as a matrix that defines a mapping
+between two feature spaces. As an example a dataset of ratings of users for
+movies may be considered. As depicted in Figure~\ref{fig:exmpl_matrix}, such a
+dataset can be modeled as a matrix in which each row represents a user, each
+column a movie, and each value a rating that a user has given a movie.
 
 \begin{figure}[h]
 \centering
@@ -12,7 +16,8 @@ In many applications data can be represented as a matrix that defines a mapping 
 %\draw      (0.5,0.5)  rectangle(6,3.5);
 \draw[step=1mm,gray,very thin] (0.4999,0.4999) grid (6,3.5);
 \end{tikzpicture}
-\caption{Example of a matrix that represents a dataset of ratings from users for movies}
+\caption{Example of a matrix that represents a dataset of ratings from users
+for movies}
 \label{fig:exmpl_matrix}
 \end{figure}
 
@@ -26,27 +31,47 @@ One approach to tackle the aforementioned problems is called \textsl{dimensional
 \draw[<->] (0,0.5) -- (0,3.5) node[pos=.5,sloped,fill=white] {users};
 \draw[<->] (0.5,4) -- (6,4) node[pos=.5,sloped,fill=white] {movies};
 \draw[step=1mm,gray,very thin] (0.4999,0.4999) grid (6,3.5);
-\draw[->] (6.5,2) -- (8,2) node[pos=.5,sloped,fill=white, align=center] {dim. \\ red.};
+\draw[->] (6.5,2) -- (8,2) node[pos=.5,sloped,fill=white, align=center] {dim.
+\\ red.};
 \draw[<->] (8.5,0.5) -- (8.5,3.5) node[pos=.5,sloped,fill=white] {users};
 \draw[<->] (9,4) -- (13,4) node[pos=.5,sloped,fill=white] {genres};
 \draw[step=1mm,gray,very thin] (8.9999,0.4999) grid (13,3.5);
 \end{tikzpicture}
-\caption{Example of dimensionality reduction used to compress the column feature space from movies to genres}
+\caption{Example of dimensionality reduction used to compress the column
+feature space from movies to genres}
 \label{fig:exmpl_dr}
 \end{figure}
 
- This leads to an approximated view of the data, in which a set of movies are grouped to one or more genres, that are liked or disliked by a set of users. The approximated data can then be processed more efficiently and sometimes even more precisely or in a more meaningful way. In \textsl{Latent Semantic Indexing} for example, a set of documents is indexed by a set of abstract concepts like topics that are more meaningful to a querying user than a set of words. The astounding beauty of dimensionality reduction lies in the way it can be achieved mathematically in an entirely domain agnostic way: With dimensionality reduction hidden concepts like genres or topics can be discovered in data that were previously unknown to an investigator. The abstract concepts like genres or topics are not required to be known in advance nor is the mapping of concrete feature space dimensions to concepts.
+This leads to an approximated view of the data, in which a set of movies are
+grouped to one or more genres, that are liked or disliked by a set of users.
+The approximated data can then be processed more efficiently and sometimes even
+more precisely or in a more meaningful way. In \textsl{Latent Semantic
+Indexing} for example, a set of documents is indexed by a set of abstract
+concepts like topics that are more meaningful to a querying user than a set of
+words. The astounding beauty of dimensionality reduction lies in the way it can
+be achieved mathematically in an entirely domain agnostic way: With
+dimensionality reduction hidden concepts like genres or topics can be
+discovered in data that were previously unknown to an investigator. The
+abstract concepts like genres or topics are not required to be known in advance
+nor is the mapping of concrete feature space dimensions to concepts.
 
-One way of achieving dimensionality reduction is to exploit the \textsl{Singular Value Decomposition (SVD)} of a matrix. The SVD of a matrix represents that matrix as a product of three special matrices:
+One way of achieving dimensionality reduction is to exploit the
+\textsl{Singular Value Decomposition (SVD)} of a matrix. The SVD of a matrix
+represents that matrix as a product of three special matrices:
 
 \begin{equation}
 	M = U \times \Sigma \times V^T
 \end{equation}
 
-$U$ is the basis of the row-feature space and $V$ is the basis of the column-feature space. So $U$ consists of orthonormal eigenvectors of $M\times M^T$ and $V$ consists of orthonormal eigenvectors of $M^T\times M$. A mathematical intuition for this results from building the product of $M$ with it's transpose and vice versa analog:
+$U$ is the basis of the row-feature space and $V$ is the basis of the
+column-feature space. So $U$ consists of orthonormal eigenvectors of $M\times
+M^T$ and $V$ consists of orthonormal eigenvectors of $M^T\times M$. A
+mathematical intuition for this results from building the product of $M$ with
+it's transpose and vice versa analog:
 
 \begin{align*}
-	M \times M^T 	& = (U \times \Sigma \times V^T) \times (V \times \Sigma^T \times U^T) \\
+M \times M^T 	& = (U \times \Sigma \times V^T) \times (V \times \Sigma^T \times
+U^T) \\
 					& = (U \times \Sigma) \times (\Sigma^T \times U^T) \\
 					& = U \times \Sigma^2 \times U^T
 \end{align*}

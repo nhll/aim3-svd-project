@@ -7,8 +7,10 @@
 \usepackage{amsmath}
 \usepackage{tikz}
 \tikzset{add reference/.style={insert path={%
-    coordinate [pos=0,xshift=-0.5\pgflinewidth,yshift=-0.5\pgflinewidth] (#1 south west) 
-    coordinate [pos=1,xshift=0.5\pgflinewidth,yshift=0.5\pgflinewidth]   (#1 north east)
+coordinate [pos=0,xshift=-0.5\pgflinewidth,yshift=-0.5\pgflinewidth] (#1 south
+west)
+coordinate [pos=1,xshift=0.5\pgflinewidth,yshift=0.5\pgflinewidth]   (#1 north
+east)
     coordinate [pos=.5] (#1 center)                        
     (#1 south west |- #1 north east)     coordinate (#1 north west)
     (#1 center     |- #1 north east)     coordinate (#1 north)
