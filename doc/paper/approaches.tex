@@ -94,12 +94,12 @@ step has terminated (4). [1]
 % Conclusion: Why DELTA iterations for Lanczos?
 % ---------------------------------------------
 
-As described in section \ref{sec:lanczos}, every iteration of the Lanczos
-algorithm only needs small parts of the existing final result as well as (parts
-of) the intermediate results of the preceding iteration. Also, during every
-iteration, the final result is only appended by small parts and none of its
-existing parts are modified in any way. This scheme seems to perfectly match
-the way Flink's delta iterations work, which is why we decided that delta
+As described in section \ref{ssec:lanczos_algorithm}, every iteration of the
+Lanczos algorithm only needs small parts of the existing final result as well
+as (parts of) the intermediate results of the preceding iteration. Also, during
+every iteration, the final result is only appended by small parts and none of
+its existing parts are modified in any way. This scheme seems to perfectly
+match the way Flink's delta iterations work, which is why we decided that delta
 iterations are more appropriate than standard iterations for implementing the
 Lanczos algorithm in Flink.
 
