@@ -162,3 +162,80 @@ operator is invoked on. Thanks to the effort initially spent on developing a
 custom vector type, we were able to implement most of the Flink operators we
 needed very easily.
 
+\subsubsection{Lanczos Algorithm}
+
+The actual loop-based implementation of the Lanczos algorithm is contained in
+the \texttt{Lanczos} class in the \textit{algorithms} package. It is mainly
+based on the english Wikipedia article on the algorithm [5] as well as on the
+algorithm's implementation in the Mahout machine learning library [3]. Listing
+\ref{lst:lanczos} shows a pseudo code version of our implementation. Compared
+to our actual Java implementation, this version is heavily simplified as it
+leaves out many intermediate steps that are necessary when taking this
+approach. In this listing an arrow from right to left stands for an assignment,
+so for example \texttt{x <-- 42} means that the value 42 gets assigned to
+\texttt{x}. Additionally, brackets after a data set name indicate read or write
+access to the element in the data set whose index is equal to the value
+specified in the brackets. For example \texttt{y[4]} would return the element
+in data set \texttt{y} whose index is 4 and \texttt{y[2] <-- 1337} would store
+the value 1337 in the data set \texttt{y} at index 2. Comments in parentheses
+indicate parts of our implementation that have been left out for the sake of
+simplicity.
+
+\begin{lstlisting}[label=lst:lanczos,captionpos=b,caption=Pseudo code of our
+loop-based Lanczos algorithm implementation (simplified)]
+class Lanczos {
+  process(A, m) {
+    a <-- empty data set of scalar values
+    b <-- empty data set of scalar values
+    v <-- empty data set of vectors
+    w <-- empty data set of vectors
+    
+    b[1] <-- 0
+    v[0] <-- 0
+    v[1] <-- random vector with norm 1
+    
+    for (j = 1...m-1) {
+      w[j] <-- A.rowVectors().each(row -> row.dot(v[j]))
+      // (Mahout style scaling of w[j])
+      
+      a[j] <-- w[j].dot(v[j])
+      w[j] <-- w[j] - v[j].times(a[j]) - v[j-1].times(b[j])
+      
+      // (Orthogonalization)
+      
+      b[j+1] <-- w[j].norm()
+      v[j+1] <-- w[j].divideBy(b[j+1])
+    }
+    
+    w[m] <-- A.rowVectors().each(row -> row.dot(v[m]))
+    a[m] <-- w[m].dot(v[m])
+    
+    tridiag = constructTridiagonalMatrix(a, b)
+    
+    return (tridiag, v)
+  }
+}
+\end{lstlisting}
+
+Within the main loop, our implementation uses a lot of intermediate data sets,
+because in Flink the algorithm can't be programmed as conveniently as the
+pseudo code example in listing \ref{lst:lanczos} might suggest. Data stored in
+data sets can't be accessed as easily as writing \texttt{v[j]}, for example.
+Instead we have to filter the data set \texttt{v} by index and store the
+resulting data set, which only contains the vector at the specified index, in a
+new data set. These intermediate data sets are in the local scope, meaning that
+they are only available within a single iteration. Appending local data sets to
+the outer data sets \texttt{a}, \texttt{b}, \texttt{v} and \texttt{w} is done
+by invoking the union operation on the respective outer data set.
+
+For every single calculation, we always invoke an appropriate Flink operation
+on the respective data set(s), most of the time passing a new instance of one
+of our custom operators (see \ref{ssec:custom_operators}) to the operation. As
+we used Java 8 for this implementation, we sometimes use lambda expressions
+instead, especially for simple operations like filtering a data set by index.
+
+\subsubsection{Performance Problem}
+
+
+
+
