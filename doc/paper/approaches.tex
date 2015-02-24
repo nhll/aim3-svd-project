@@ -108,7 +108,7 @@ Lanczos algorithm in Flink.
 % ======================================
 
 \subsection{Using Mahout's Implementation of the Lanczos Algorithm}
-
+\label{ssec:approach_mahout}
 During the research phase of our project, we studied (amongst others) the
 documentation [2] and the source code [3] of the Apache Mahout machine learning
 library. It quickly came to our attention that Mahout contains a full SVD
@@ -119,20 +119,25 @@ algorithm works as well as for inspiration purposes. Eventually we started to
 consider reusing this existing implementation to run the Lanczos algorithm in
 Flink.
 
+The Mahout Lanczos solver is generic in a way that it only relies on two java interfaces: \texttt{Vector} and \texttt{Matrix}. By implementing these two interfaces with Apache Flink we could use the Mahout Lanczos solver and wouldn't need to implement it from scratch. 
+
 % Brief description of Mahout approach
 % ------------------------------------
 
-Directly using Mahout's \texttt{LanczosSolver} for our project would include
-implementing all the interfaces and possibly extending most of the classes that
-are used within the \texttt{LanczosSolver} class and then running it on those
-implementations of ours. That way, we wouldn't actually implement the algorithm
-itself for Flink. Instead, we would implement sort of an Add-On that would
-allow the \texttt{LanczosSolver} to be run on a Flink cluster. The benefits of
-that kind of code reuse include a relatively high confidence in the correctness
-of the algorithm's actual implementation. Also, the efforts that would be saved
-by not implementing the whole algorithm ourselves could potentially be spent on
-getting things up and running more quickly and on improving other parts of the
-system.
+%Directly using Mahout's \texttt{LanczosSolver} for our project would include
+%implementing all the interfaces and possibly extending most of the classes that
+%are used within the \texttt{LanczosSolver} class and then running it on those
+%implementations of ours. That way, we wouldn't actually implement the algorithm
+%itself for Flink. Instead, we would implement sort of an Add-On that would
+%allow the \texttt{LanczosSolver} to be run on a Flink cluster.
+
+% !!! ---> maybe under conclusion? reads like pro/con stuff.
+%The benefits of
+%that kind of code reuse include a relatively high confidence in the correctness
+%of the algorithm's actual implementation. Also, the efforts that would be saved
+%by not implementing the whole algorithm ourselves could potentially be spent on
+%getting things up and running more quickly and on improving other parts of the
+%system.
 
 
 % Loop-Based Approach
