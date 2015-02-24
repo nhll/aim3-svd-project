@@ -18,7 +18,7 @@ In many applications data can be represented as a matrix that defines a mapping 
 
 The general goal of such a matrix or vector representation of data is to exploit well known mathematical functions and properties to process the data, which is done by many machine learning and data mining algorithms. However, if at least one feature space is very large, which means in the example that the number of movies or users is very high, the practical application of this approach is hindered. The most obvious reason for this roots in the size of the data, that can get too large as to fit into main memory or as to be processed efficiently. Beyond that a large number of (possibly dependent) dimensions can render mathematical functions useless---especially vector distances, on which important algorithms in machine learning and data mining rely. The latter class of phenomena is grouped under the term \textsl{curse of dimensionality}.
 
-One approach to tackle the aforementioned problems is called \textsl{dimensionality reduction} and aims to compress the data's feature spaces by reducing the number of their dimensions. For instance this would mean in our example to compress the number of movies to a more abstract concept like genres as depicted in Figure \ref{fig:exmpl_dr} (in reality, concepts are more fuzzy than genres).
+One approach to tackle the aforementioned problems is called \textsl{dimensionality reduction} and aims to syntactically and semantically compress the data's feature spaces by reducing the number of their dimensions. For instance this would mean in our example to compress the number of movies to a more abstract concept like genres as depicted in Figure \ref{fig:exmpl_dr} (in reality, concepts are more fuzzy).
 
 \begin{figure}[h]
 \centering
@@ -51,25 +51,69 @@ $U$ is the basis of the row-feature space and $V$ is the basis of the column-fea
 					& = U \times \Sigma^2 \times U^T
 \end{align*}
 
-So $U$ and $V$ are the eigendecompositions of $M\times M^T$ and $M^T\times M$ respectively. $\Sigma$ is a diagonal matrix that holds the corresponding square-rooted eigenvalues in descending order. Figure \ref{fig:svd} gives a more detailed view on the SVD of a matrix $M$. 
+So $U$ and $V$ result from the eigendecompositions of $M\times M^T$ and $M^T\times M$ respectively. $\Sigma$ is a diagonal matrix that holds the corresponding square-rooted eigenvalues in descending order. Figure \ref{fig:svd} gives a more detailed view on the SVD of a matrix $M$. 
 
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=0.8\textwidth]{images/svd_mmds.png}
-	\caption{Depiction of the SVD of a matrix $M$. Note that it is not necessarily $r_n = r_m$}
+	\caption{Depiction of the SVD of a matrix $M$}
 	\label{fig:svd}
 \end{figure}
 
-The actual reduction of dimensions is then performed by dropping least significant eigenvalues of $\Sigma$ along with corresponding eigenvectors in $U$ and $V$ and keeping only the top $k$ one. The resulting matrix in then called the $rank_k$ approximation of $M$. This works because the column vectors of $U$ and $V$ and normalized and thus do not contribute value or length to a recomposed element. That is entirely done by the eigenvalues of $\Sigma$. By dropping the smallest values of those, a lowest possible approximation error is ensured.
+The actual reduction of dimensions is then performed by dropping least significant eigenvalues of $\Sigma$ along with corresponding eigenvectors in $U$ and $V$ and keeping only the top $k$ one. The resulting matrix in then called the $\text{rank}_k$ approximation of $M$. This works because the column vectors of $U$ and $V$ are normalized and thus do not contribute value or length to a recomposed element. That is entirely done by the eigenvalues of $\Sigma$. By dropping the smallest values of those, a lowest possible approximation error is ensured.
 
-\subsection{The Lanczos Algorithm}
+\subsection{The Lanczos Algorithm and Eigendecomposition}
 
-Computing the complete SVD of a large matrix is very expensive, especially if considered that only the top $k$ eigenpairs are kept. Therefore the Lanczos Algorithm is often used as an auxiliary tool, as it provides the possibility to directly compute the top $k$ eigenpairs: The Lanczos algorithm takes as input a matrix $A$ and computes as result a matrix $Q$ of Lanczos vectors and a symmetric, tridiagonal auxiliary matrix $T$.
+In order to compute the SVD of a matrix, the eigendecompositions of $MM^T$ and $M^T M$ have to be computed:
 
 \begin{align*}
-	Lanzcos(A) = (Q,T)
+	Eig(MM^T) = (U,\Sigma^2), \;	\;\;	\;\;	\;\;\;	Eig(M^T M) = (V,\Sigma^2)
 \end{align*}
 
+This is very expensive if even possible for large matrices, especially when considered that only the top $k$ eigenpairs are kept. The Lanczos algorithm is often used as an auxiliary tool, as it provides the possibility to indirectly compute only the top $k$ eigendecomposition: The Lanczos algorithm takes as input a symmetric and quadratic matrix $A$ (which is $MM^T$ or $M^T M$ in our case) and computes as result a matrix $L$ of Lanczos vectors and a symmetric, tridiagonal auxiliary matrix $T$.
 
-%Another example for this approach is a dataset that contains for a corpus of documents and a dictionary of words the number of how often a word appears in a document. A matrix representation of this situation models i.e. documents as rows, columns as words, and values as the sum of how often a word appears in a document.
+\begin{align*}
+	Lanzcos(A) = (L,T) \;\;\;\;\;\;\;\;
+	L_{m\times k} = \left ( \vec{l_1}, ... \vec{l_i}, ... \vec{l_k} \right ) \;\;\;\;\;\;\;\;
+	T_{k\times k} = \begin{pmatrix}  
+\alpha_1 & \beta_2  &          & 0 \\
+\beta_2  & \alpha_2 & \ddots   & \\
+         & \ddots   & \ddots   & \beta_k \\
+0        &          & \beta_k  & \alpha_k \\
+\end{pmatrix}
+\end{align*}
+
+Because $T$ is symmetric and tridiagonal a traditional eigendecomposition of $T$ is very efficient:
+
+\begin{align*}
+	Eig(T) = (Q_T,\Lambda_T)
+\end{align*}
+
+The eigenvalues of $A$ are then the same as the one of $T$ ($\Lambda_A = \Lambda_T$) and the eigenvectors of $A$ can be calculated by:
+
+\begin{align*}
+	Q_A = L \times Q_T
+\end{align*}
+
+As the Lanczos algorithm is the only part in this roadmap that operates on the large initial data, this is the most crucial part that needs to be parallelized. The following listing contains a pseudo code variant of the Lanczos algorithm:
+
+\begin{flalign*}
+\texttt{1}\quad &l_1 \leftarrow \, \text{uniformly distributed vector with norm 1} \\
+\texttt{2}\quad &l_0 \leftarrow 0 \\
+\texttt{3}\quad &\beta_1 \leftarrow 0 \\
+\texttt{4}\quad &\textbf{for} \; j = 1,2,\cdots,k-1\\
+\texttt{5}\quad &\qquad w_j \leftarrow A l_j\\
+\texttt{6}\quad &\qquad \alpha_j \leftarrow  w_j \cdot l_j \\
+\texttt{7}\quad &\qquad w_j \leftarrow w_j - \alpha_j l_j   - \beta_j l_{j-1} \\
+\texttt{8}\quad &\qquad \textbf{for}\; i = 1, 2, \cdots,j-2 \\
+\texttt{9}\quad &\qquad \qquad w_j \leftarrow w_j - \left(w_j \cdot l_i\right) l_i \\
+\texttt{10}\quad &\qquad \textbf{endfor} \\
+\texttt{11}\quad &\qquad \beta_{j+1} \leftarrow \left\| w_j \right\|  \\
+\texttt{12}\quad &\qquad l_{j+1} \leftarrow w_j / \beta_{j+1}  \\
+\texttt{13}\quad &\textbf{endfor} \\
+\texttt{14}\quad &w_k  \leftarrow A v_k \\
+\texttt{15}\quad &\alpha_k \leftarrow  w_k \cdot v_k
+\end{flalign*}
+ 
+As depicted above the Lanczos algorithm is an \textsl iterive algorithm that computes in each step $\alpha_j$,~$l_{j+1}$~and~$\beta_{j+1}$ given $\l_{j-1}$,~$l_{j}$~and~$\beta_{j}$ from the previous step. 
 
