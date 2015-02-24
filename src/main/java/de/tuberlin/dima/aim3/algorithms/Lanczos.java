@@ -88,16 +88,19 @@ public final class Lanczos {
                 // Orthogonalization according to the mahout source code.
                 for (int k = 0; k < j; k++) {
                     final int l = k;
-                    DataSet<Vector> vk = v.filter(vec -> vec.getIndex() == l);
+
                     // alpha = wj * vk
+                    DataSet<Vector> vk = v.filter(vec -> vec.getIndex() == l);
                     DataSet<VectorElement> alpha = wj.reduceGroup(new DotProduct())
                                                      .withBroadcastSet(vk, "otherVector");
                     // wj = wj - alpha * vk
-                    DataSet<Vector> alphaV = v.reduceGroup(new VectorScalarMultiplication())
-                                              .withBroadcastSet(alpha, "scalar");
+                    DataSet<Vector> alphaVk = vk.reduceGroup(new VectorScalarMultiplication())
+                                               .withBroadcastSet(alpha, "scalar");
                     wj = wj.reduceGroup(new VectorSubtraction())
-                           .withBroadcastSet(alphaV, "otherVector");
+                           .withBroadcastSet(alphaVk, "otherVector");
                 }
+
+                w = w.union(wj);
 
                 // b[j+1] <-- l2norm(w[j])
                 DataSet<VectorElement> bjPlus1 = wj.reduceGroup(new GetVectorNorm())
@@ -108,47 +111,9 @@ public final class Lanczos {
                 // v[j+1] <-- w[j] / b[j+1]
                 DataSet<Vector> vjPlus1 = wj.reduceGroup(new VectorScalarDivision(true))
                                             .withBroadcastSet(bjPlus1, "scalar");
-
-                // orthogonalize:
-                // for k .. i do
-                //   v[j+1] <-- v[j+1] - (v[k] . v[j+1]) * v[k]
-                //                for (int k = 1; k <= j; k++) {
-                //                    int l = k;
-                //                    DataSet<Vector> vk = v.filter(vector -> vector.getIndex() == l);
-                //                    // gram-schmitt
-                //                    vjPlus1 = vjPlus1.cross(vk).with((v1, v2) -> v1.minus(v2.times(v2.dot(v1))));
-                //                }
                 v = v.union(vjPlus1);
             }
         }
-
-        // TODO: Remove this when not needed anymore. This is for testing orthogonality of lanzcos vectors.
-        //
-        //        DataSet<Tuple3<Integer, Integer, Double>> dots =
-        //                v.reduceGroup(new GroupReduceFunction<Vector, Tuple3<Integer, Integer, Double>>() {
-        //                    List<Vector> vectors = new ArrayList<Vector>();
-        //
-        //                    @Override
-        //                    public void reduce(Iterable<Vector> values,
-        //                                       org.apache.flink.util.Collector<Tuple3<Integer, Integer, Double>> out)
-        //                            throws Exception {
-        //                        for (Vector v : values) {
-        //                            vectors.add(v);
-        //                        }
-        //                        System.out.println(vectors);
-        //                        for (Vector v1 : vectors) {
-        //                            for (Vector v2 : vectors) {
-        //                                if (v1.getIndex() <= v2.getIndex()) {
-        //                                    Tuple3<Integer, Integer, Double> res =
-        //                                            new Tuple3<Integer, Integer, Double>(v1.getIndex(), v2.getIndex(),
-        //                                                                                 v1.dot(v2));
-        //                                    out.collect(res);
-        //                                }
-        //                            }
-        //                        }
-        //                    }
-        //                });
-        //        dots.writeAsText(Config.getTmpOutput() + "dots.out", FileSystem.WriteMode.OVERWRITE);
 
         // Construct Tmm from the a and b values.
         //
