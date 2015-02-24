@@ -88,6 +88,7 @@ So $U$ and $V$ result from the eigendecompositions of $M\times M^T$ and $M^T\tim
 The actual reduction of dimensions is then performed by dropping least significant eigenvalues of $\Sigma$ along with corresponding eigenvectors in $U$ and $V$ and keeping only the top $k$ one. The resulting matrix in then called the $\text{rank}_k$ approximation of $M$. This works because the column vectors of $U$ and $V$ are normalized and thus do not contribute value or length to a recomposed element. That is entirely done by the eigenvalues of $\Sigma$. By dropping the smallest values of those, a lowest possible approximation error is ensured.
 
 \subsection{The Lanczos Algorithm and Eigendecomposition}
+\label{ssec:lanczos_algorithm}
 
 In order to compute the SVD of a matrix, the eigendecompositions of $MM^T$ and $M^T M$ have to be computed:
 
