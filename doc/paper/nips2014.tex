@@ -16,10 +16,13 @@
     (#1 center     -| #1 south west)     coordinate (#1 west)
     (#1 center     -| #1 north east)     coordinate (#1 east)   
 }}} 
+
+\usepackage{listings}
 %\documentstyle[nips14submit_09,times,art10]{article} % For LaTeX 2.09
 
 
-\title{Implementing Dimensionality Reduction in Apache Flink using the Lanczos Algorithm}
+\title{Implementing Dimensionality Reduction in Apache Flink using the Lanczos
+Algorithm}
 
 \author{
 Nik Hille \\
@@ -42,12 +45,36 @@ Fridtjof Sander \\
 
 \nipsfinalcopy % Uncomment for camera-ready version
 
-\captionsetup{justification=centering,width=0.9\textwidth} % Center captions and set width to 90%
+% Caption setup
+\captionsetup{justification=centering,width=0.9\textwidth}
+
+%Listing setup
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{frame=tb,
+  language=Java,
+  aboveskip=5mm,
+  belowskip=1mm,
+  showstringspaces=false,
+  columns=fullflexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3,
+  keepspaces=true
+}
 
 \begin{document}
 
 \begin{center}
-\textbf{Advanced Information Management III Scalable Data - Analytics and Data Mining}
+\textbf{Advanced Information Management III Scalable Data - Analytics and Data
+Mining}
 \end{center}
 
 \vspace{0.8cm}
