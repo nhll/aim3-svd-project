@@ -31,7 +31,6 @@ public class VectorScalarDivision extends RichGroupReduceFunction<Vector, Vector
             if (incrementIndex) {
                 result.setIndex(result.getIndex() + 1);
             }
-//            System.out.println("(" + vector + ") / " + scalarFinal + " --> (" + result + ")");
             out.collect(result);
         });
     }

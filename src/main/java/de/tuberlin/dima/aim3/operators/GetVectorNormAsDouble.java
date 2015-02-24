@@ -8,9 +8,6 @@ public class GetVectorNormAsDouble extends RichGroupReduceFunction<Vector, Doubl
     @Override
     public void reduce(Iterable<Vector> vectors, Collector<Double> out) throws Exception {
         int norm = getRuntimeContext().<Integer>getBroadcastVariable("norm").get(0);
-        vectors.forEach(vector -> {
-            System.out.println("---> " + vector.norm(norm) + " (vector: (" + vector + "))");
-            out.collect(vector.norm(norm));
-        });
+        vectors.forEach(vector -> out.collect(vector.norm(norm)));
     }
 }
