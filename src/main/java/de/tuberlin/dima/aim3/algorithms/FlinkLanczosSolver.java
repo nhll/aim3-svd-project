@@ -2,7 +2,7 @@ package de.tuberlin.dima.aim3.algorithms;
 
 import de.tuberlin.dima.aim3.Config;
 import de.tuberlin.dima.aim3.datatypes.Element;
-import de.tuberlin.dima.aim3.operators.Multiplication;
+import de.tuberlin.dima.aim3.operators.BinaryOperators;
 import de.tuberlin.dima.aim3.operators.custom.*;
 import de.tuberlin.dima.aim3.operators.extended.*;
 import org.apache.flink.api.common.functions.MapFunction;
@@ -37,7 +37,7 @@ public final class FlinkLanczosSolver extends LanczosSolver {
         // squared. So in that case, we leave A untouched, and sqrt the eigenvalues of A^T * T in the unsymmetric case
         // to get same results as in the symmetric case
         if (!isSymmetric) {
-            corpus = Multiplication.multiplySquared(corpus, corpus, Config.idOfCorpus);
+            corpus = BinaryOperators.multiplySquared(corpus, corpus, Config.idOfCorpus);
         }
         /*
         - each delta iteration has two inputs: workSet and solutionSet
@@ -53,7 +53,7 @@ public final class FlinkLanczosSolver extends LanczosSolver {
         if(desiredRank == 1) {
             return finalizeLanczos(corpus, v1, desiredRank, isSymmetric);
         }
-        DataSet<Element> v2 = Multiplication.multiply(corpus, v1, Config.idOfBasis).runOperation(new IncrementColumn());
+        DataSet<Element> v2 = BinaryOperators.multiply(corpus, v1, Config.idOfBasis).runOperation(new IncrementColumn());
 
         DataSet<Double> scaleFactorSet;
         if(scaleFactor != null && scaleFactor > 0.0) {
@@ -62,13 +62,12 @@ public final class FlinkLanczosSolver extends LanczosSolver {
         else {
             scaleFactorSet = v2.runOperation(new GetScaleFactor());
         }
-        v2 = Multiplication.scalarDouble(v2, scaleFactorSet);
-        DataSet<Element> alpha1 = Multiplication.dot(v1, v2, Config.idOfTriag).runOperation(new SetRowAndCol(1L, 1L));
-        //if(1==1) return alpha1;
-        // v2 -= alpha * v1. This step is the actual orthogonalization (why?). Alpha contains the "un-orthogonal"
+        v2 = BinaryOperators.scalarDouble(v2, scaleFactorSet);
+        DataSet<Element> alpha1 = BinaryOperators.dot(v1, v2, Config.idOfTriag).runOperation(new SetRowAndCol(1L, 1L));
+        // v2 -= alpha * v1. This step is the actual orthogonalization. Alpha contains the "un-orthogonal"
         // projection. This is why we don't need to orthogonalize the nextVector to the previous. It has been done as part
         // of the algorithm.
-        v2 = Multiplication.substract(v2, Multiplication.scalar(v1, alpha1));
+        v2 = BinaryOperators.substract(v2, BinaryOperators.scalar(v1, alpha1));
         // in case of puzzlement about beta**2**: in tridiag we have 1 to m alphas (diagonal) and 2 to m betas (one off diagonal)
         DataSet<Element> beta2 = v2.runOperation(new CreateElementWithL2Norm(Config.idOfTriag)).runOperation(new SetRowAndCol(2L, 1L));
 
@@ -79,7 +78,7 @@ public final class FlinkLanczosSolver extends LanczosSolver {
         /*
             ### initialize iteration ###
          */
-        // the solution set contains elements, that we don't need in an interation step. For now, this is only the first alpha
+        // the solution set contains elements, that we don't need in an iteration step. For now, this is only the first alpha
         DataSet<Element> initialSolutionSet = alpha1;
         // the workset contains all the stuff that is needed to proccess on that. That is v_i-1, v_i, and b_i
         DataSet<Element> initialWorkingset = v1.union(v2.union(beta2));
@@ -98,15 +97,15 @@ public final class FlinkLanczosSolver extends LanczosSolver {
         DataSet<Element> currentBeta = workset.filter(new FilterCurrentBeta());
         // do actual work
         // v_i+1 = A * v_i
-        DataSet<Element> nextVector = Multiplication.multiply(corpus, currentVector, Config.idOfBasis).runOperation(new IncrementColumn());
+        DataSet<Element> nextVector = BinaryOperators.multiply(corpus, currentVector, Config.idOfBasis).runOperation(new IncrementColumn());
         // scale nextVector
-        nextVector = Multiplication.scalarDouble(nextVector, scaleFactorSet);
+        nextVector = BinaryOperators.scalarDouble(nextVector, scaleFactorSet);
         // v_i+1 -= beta_i * v_i-1
-        nextVector = Multiplication.substract(nextVector, Multiplication.scalar(previousVector, currentBeta));
+        nextVector = BinaryOperators.substract(nextVector, BinaryOperators.scalar(previousVector, currentBeta));
         // alpha_i = v_i+1 . v_i
-        DataSet<Element> currentAlpha = Multiplication.dot(currentVector, nextVector, Config.idOfTriag).map(new SetNewAlphaRowAndCol());
+        DataSet<Element> currentAlpha = BinaryOperators.dot(currentVector, nextVector, Config.idOfTriag).map(new SetNewAlphaRowAndCol());
         // v_i+1 -= alpha_i * v_i
-        nextVector = Multiplication.substract(nextVector, Multiplication.scalar(currentVector, currentAlpha));
+        nextVector = BinaryOperators.substract(nextVector, BinaryOperators.scalar(currentVector, currentAlpha));
         /*
             ### orthogonalization ###
 
@@ -115,13 +114,13 @@ public final class FlinkLanczosSolver extends LanczosSolver {
             .....................................
 
          */
-
+        // this is a dirty hack to init a nested iteration on the solution set
         DataSet<Element> initialOrthoWorkset = env.generateSequence(1, numRows).cross(env.generateSequence(1, desiredRank)).with((x,y) -> new Element(Config.idOfBasis, x, y, 0.0)).join(iteration.getSolutionSet()).where(0,1,2).equalTo(0,1,2).with((e1,e2)->e2);
         DataSet<Element> initialOrthoSolutionSet = nextVector;
         DeltaIteration<Element,Element> orthoIteration = initialOrthoSolutionSet.iterateDelta(initialOrthoWorkset, desiredRank, Element.ID, Element.ROW, Element.ROW);
         DataSet<Element> currentOrthoBaseVector = orthoIteration.getWorkset().runOperation(new FilterCurrentOrthoVector());
-        DataSet<Element> pseudoAlpha = Multiplication.dot(nextVector, currentOrthoBaseVector, (byte) -1);
-        nextVector = Multiplication.substract(nextVector, Multiplication.scalar(currentOrthoBaseVector, pseudoAlpha));
+        DataSet<Element> pseudoAlpha = BinaryOperators.dot(nextVector, currentOrthoBaseVector, (byte) -1);
+        nextVector = BinaryOperators.substract(nextVector, BinaryOperators.scalar(currentOrthoBaseVector, pseudoAlpha));
         DataSet<Element> nextOrthoWorkset = orthoIteration.getWorkset().filter(new RichFilterFunction<Element>() {
             @Override
             public boolean filter(Element e) throws Exception {
@@ -138,7 +137,7 @@ public final class FlinkLanczosSolver extends LanczosSolver {
             because emptying the nextWorkset is the only chance of bailing out of the iteration early
          */
         // b_i+1 = ||v_i+1||. So this normalizes v_i+1
-        nextVector = Multiplication.scalarInverted(nextVector, nextBeta);
+        nextVector = BinaryOperators.scalarInverted(nextVector, nextBeta);
         /*
             ### prepare next iteration ###
          */
@@ -159,8 +158,8 @@ public final class FlinkLanczosSolver extends LanczosSolver {
     private static DataSet<Element> finalizeLanczos(DataSet<Element> corpus, DataSet<Element> result, int desiredRank, boolean isSymmetric) {
         // add last alpha
         DataSet<Element> lastVector = result.filter(new FilterBasisVector(Long.valueOf(desiredRank)));
-        DataSet<Element> overflowVector = Multiplication.multiply(corpus, lastVector, Config.idOfBasis).runOperation(new IncrementColumn());
-        DataSet<Element> lastAlpha = Multiplication.dot(lastVector, overflowVector, Config.idOfTriag).runOperation(new SetRowAndCol(Long.valueOf(desiredRank), Long.valueOf(desiredRank)));
+        DataSet<Element> overflowVector = BinaryOperators.multiply(corpus, lastVector, Config.idOfBasis).runOperation(new IncrementColumn());
+        DataSet<Element> lastAlpha = BinaryOperators.dot(lastVector, overflowVector, Config.idOfTriag).runOperation(new SetRowAndCol(Long.valueOf(desiredRank), Long.valueOf(desiredRank)));
         result = result.union(lastAlpha);
         // duplicate betas
         result = result.flatMap(new BetaDuplicator());

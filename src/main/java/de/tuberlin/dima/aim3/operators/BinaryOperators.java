@@ -11,7 +11,7 @@ import org.apache.flink.util.Collector;
 /**
  * Created by fsander on 07.02.15.
  */
-public class Multiplication {
+public class BinaryOperators {
 
     public static DataSet<Element> multiply(DataSet<Element> one, DataSet<Element> two, byte id) {
         return
