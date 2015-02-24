@@ -13,5 +13,115 @@ in this section.
 
 \subsection{Exploiting Mahout's LanczosSolver}
 
+
+% Loop-Based Implementation
+% =========================
+
 \subsection{Loop-Based Implementation}
+
+The loop-based approach discussed in section \ref{ssec:loop_approach} is
+actually the one we started implementing first. The basic idea here was to
+model the data flow of a single iteration step in Flink and and to implement
+the actual iterations using ordinary Java loops. Our first step was to identify
+the different modules we would have to develop in order to build a solid
+foundation that we could implement the Lanczos algorithm on. The goal here was
+not only to make the algorithm's implementation possible, but to provide an API
+for ourselves that would make it convenient as well.
+
+% High-Level Project Structure
+% ----------------------------
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[scale=0.5]{images/loop_approach_project_structure}
+    \caption{Core project structure of the loop-based implementation}
+	\label{fig:loop_project_structure}
+\end{figure}
+
+Figure \ref{fig:loop_project_structure} shows the core project structure of our
+loop-based implementation. On the top level, it consists of general
+\texttt{Config} and \texttt{Utils} classes that contain configuration
+parameters and utility functions, respectively. The \texttt{SVD} class acts as
+the entry point to the program. Except for some pre- and post-processing, it
+basically just invokes the Lanczos algorithm on an input matrix. The
+interesting parts of the program are divided into the three sub-packages
+\textit{algorithms}, \textit{datatypes} and \textit{operators}. As the
+\textit{algorithms} package should be self-explanatory, we will only explain
+the general ideas behind the \textit{datatypes} and  \textit{operators}
+packages at this point. On that basis, we will then give a lower-level
+description of our Lanczos implementation.
+
+% Custom Datatypes
+% ----------------
+
+\subsubsection{Custom Datatypes}
+
+As stated earlier, we aimed for a convenient internal API that would make large
+parts of the implementation relatively comfortable for us by hiding
+implementation details and by providing powerful abstractions for various kinds
+of operations. To achieve this, we developed some custom data types that
+provide all the mathematical operations we needed in a convenient way. They can
+be found in the \textit{datatypes} package.
+
+% Vector Class
+% ------------
+
+The main type of calculation needed in the Lanczos algorithm is vector algebra,
+which is why the \texttt{Vector} class is the most verbose and probably one of
+the most interesting classes in the project. One step of the Lanczos algorithm
+is the multiplication of a matrix by a vector. But as a matrix can be seen as a
+list of vectors and as we would have to split the matrix into its row vectors
+in order to run this calculation in parallel anyway, we figured we wouldn't
+have to implement a separate matrix class.
+
+\begin{lstlisting}[label=lst:vector_usage,captionpos=b,caption=Example use of
+the \texttt{Vector} class]
+List<Double> v1Elements;
+// (Fill the list with 3 vector elements)
+Vector v1 = new Vector(v1Elements);
+Vector v2 = new Vector.getRandomVector(3, 5); // 3 elements, norm = 5
+
+double v1Norm     = v1.norm();     // L2 norm by default
+Vector v1Scaled   = v1.scaleTo(1); // Scale v1 to norm 1
+Vector difference = v1.minus(v2);
+double dotProduct = v1.dot(v2);
+Vector v1Doubled  = v1.times(2);
+Vector v2Halved   = v2.divideBy(2);
+\end{lstlisting}
+
+Internally, the \texttt{Vector} class simply uses an ordinary Java list of
+\texttt{Double} values to store its elements. The class allows new vector
+instances to be constructed from a list of elements, from a Java map containing
+elements mapped to their indices or by creating a copy of an existing vector.
+It also provides static methods for constructing new zero vectors or random
+vectors of arbitrary sizes. As for the actual algebra, the \texttt{Vector}
+class contains instance methods for calculating a vector's norm, scaling a
+vector to any target norm, subtracting one vector from another, building the
+dot product of two vectors and multiplying or subtracting a vector by a scalar.
+Listing \ref{lst:vector_usage} demonstrates usage of the \texttt{Vector} class
+for convenient vector calculations.
+
+% Other Datatypes
+% ---------------
+
+Compared to the vector type, the other custom data types are less important and
+less interesting. The \texttt{VectorElement} class represents a value that has
+an index of some sort, for example an index indicating the value's position in
+a vector, but it doesn't implement any algebraic operations on that value.
+Because the Lanczos algorithm's final result are two matrices, we wanted to
+have a way of returning two matrices from a method, which we solved by wrapping
+those two matrices inside the \texttt{LanczosResult} class.
+
+% Custom Flink Operators
+% ----------------------
+
+\subsubsection{Custom Flink Operators}
+
+Since Flink operates solely on data sets, one has to implement a Flink
+program's data flow by defining custom operators and then invoking those
+operators on data sets representing the relevant data. This is exactly the
+purpose of the modules in our \textit{operators} package. Some of these modules
+do calculations on vectors and scalar values, while others only transform
+existing data from one form into another.
+
 
