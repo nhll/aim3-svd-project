@@ -5,7 +5,7 @@ import de.tuberlin.dima.aim3.datatypes.Element;
 import org.apache.flink.api.common.functions.RichFilterFunction;
 
 /**
- * Created by fsander on 08.02.15.
+ * Filters the current beta out of the input base on the superstep number
  */
 public class FilterCurrentBeta extends RichFilterFunction<Element> {
     @Override

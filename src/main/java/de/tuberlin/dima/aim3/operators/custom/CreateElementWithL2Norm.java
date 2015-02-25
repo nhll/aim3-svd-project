@@ -5,7 +5,9 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.DataSet;
 
 /**
- * Created by fsander on 08.02.15.
+ * Treats the input data, as a single vector and calculates the L2 norm with all elements inside the dataset.
+ * Make sure to filter the vector before applying this operator. The L2 norm is encapsulated into an Element with the
+ * given id, and row and column equal to -1
  */
 public class CreateElementWithL2Norm extends AbstractCustomOperation<Element,Element> {
 
@@ -31,7 +33,7 @@ public class CreateElementWithL2Norm extends AbstractCustomOperation<Element,Ele
 
         @Override
         public Element map(Double v) throws Exception {
-            return new Element((byte) id, -1L, -1L, Math.sqrt(v));
+            return new Element(id, -1L, -1L, Math.sqrt(v));
         }
     }
 

@@ -5,13 +5,12 @@ import de.tuberlin.dima.aim3.operators.extended.FilterBasisVectorOfRelativeStep;
 import org.apache.flink.api.java.DataSet;
 
 /**
- * Created by fsander on 07.02.15.
+ * Filters the current Basis vector out of the orthogonalization input.
  */
 public class FilterCurrentOrthoVector extends AbstractCustomOperation<Element,Element> {
 
     @Override
     public DataSet createResult() {
-        // because we did a pre step, the iteration counter is one behind
         return input.filter(new FilterBasisVectorOfRelativeStep(0));
     }
 }

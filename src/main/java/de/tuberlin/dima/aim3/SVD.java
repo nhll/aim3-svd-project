@@ -5,7 +5,6 @@ import de.tuberlin.dima.aim3.datatypes.Element;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.operators.DeltaIteration;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.hadoopcompatibility.mapred.HadoopInputFormat;
 import org.apache.flink.util.Collector;
@@ -22,30 +21,13 @@ public class SVD {
 
     public static void main(String[] args) throws Exception {
 
-        // shut up flink
-        //System.err.close();
+        // uncomment to disable flinks messages
+        // System.err.close();
 
         // Set default locale to US so that double values are displayed with a dot instead of a comma.
         Locale.setDefault(Locale.US);
 
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
-
-//        DataSet<Tuple2<Long,Long>> initialSolution = env.generateSequence(1,10).flatMap(new FlatMapFunction<Long, Tuple2<Long, Long>>() {
-//            @Override
-//            public void flatMap(Long value, Collector<Tuple2<Long, Long>> out) throws Exception {
-//                out.collect(new Tuple2<>(value,value));
-//            }
-//        });
-//        DataSet<Long> initialWorkset = env.fromElements(1L);
-//        DeltaIteration<Long,Long> iter = initialSolution.iterateDelta(initialSolution, 1000, 1);
-//        iter
-
-
-
-
-        //DataSet<Element> corpus = readFromSequenceFileInputFormat(env, "/Users/fsander/Downloads/mahout-distribution-0.9/examples/bin/movielens/ratings.seq");
-
-
 
         DataSet<Element> A = env.fromElements(
             new Element((byte) 0, 1L, 1L, 1.0),
@@ -64,18 +46,24 @@ public class SVD {
 
         DataSet<Element> lanzcosPlasma = FlinkLanczosSolver.solve(env, A, 4, 4, 3, false);
 
-        lanzcosPlasma.print();
-
         DataSet<Element> triag = lanzcosPlasma.filter(e -> e.getId() == Config.idOfTriag);
         DataSet<Element> basis = lanzcosPlasma.filter(e -> e.getId() == Config.idOfBasis);
 
-//        triag.print();
-//
-//        basis.print();
+        triag.print();
+        basis.print();
 
         env.execute();
     }
 
+    /**
+     *
+     * Reads a set of Mahout row vectors that are materialized as Hadoop sequence file and converts them into our
+     * Element format.
+     *
+     * @param env
+     * @param path
+     * @return
+     */
     private static DataSet<Element> readFromSequenceFileInputFormat(ExecutionEnvironment env, String path) {
         // hdfs integration
         JobConf job = new JobConf();

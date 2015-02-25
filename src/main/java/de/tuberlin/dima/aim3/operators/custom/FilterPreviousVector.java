@@ -5,13 +5,13 @@ import de.tuberlin.dima.aim3.operators.extended.FilterBasisVectorOfRelativeStep;
 import org.apache.flink.api.java.DataSet;
 
 /**
- * Created by fsander on 07.02.15.
+ * Filters out the previous Basis vector out of a workset. The result is v_{i-1}
  */
 public class FilterPreviousVector extends AbstractCustomOperation<Element,Element> {
 
     @Override
     public DataSet createResult() {
-        // because we did a pre step, the iteration counter is one behind
+        // superstep number equals id of previous basis vector, so 0 modification
         return input.filter(new FilterBasisVectorOfRelativeStep(0));
     }
 }

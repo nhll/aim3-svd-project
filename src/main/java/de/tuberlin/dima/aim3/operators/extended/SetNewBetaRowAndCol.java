@@ -4,7 +4,7 @@ import de.tuberlin.dima.aim3.datatypes.Element;
 import org.apache.flink.api.common.functions.RichMapFunction;
 
 /**
- * Created by fsander on 08.02.15.
+ * Sets the proper row and col for a newly beta alpha. That is for the row: superstep numner + 2; and for the col: superstep numner + 1
  */
 public class SetNewBetaRowAndCol extends RichMapFunction<Element,Element> {
 

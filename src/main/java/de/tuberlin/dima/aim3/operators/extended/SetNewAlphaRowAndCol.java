@@ -4,7 +4,7 @@ import de.tuberlin.dima.aim3.datatypes.Element;
 import org.apache.flink.api.common.functions.RichMapFunction;
 
 /**
- * Created by fsander on 08.02.15.
+ * Sets the proper row and col for a newly created alpha. That is for both superstep number + 1
  */
 public class SetNewAlphaRowAndCol extends RichMapFunction<Element,Element> {
 

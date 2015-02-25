@@ -3,7 +3,7 @@ package de.tuberlin.dima.aim3.datatypes;
 import org.apache.flink.api.java.tuple.Tuple4;
 
 /**
- * Created by fsander on 07.02.15.
+ * Wrapper class over Tuple4 with getters
  */
 public class Element extends Tuple4<Byte, Long, Long, Double> {
 

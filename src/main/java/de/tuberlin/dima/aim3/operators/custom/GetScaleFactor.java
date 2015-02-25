@@ -4,7 +4,7 @@ import de.tuberlin.dima.aim3.datatypes.Element;
 import org.apache.flink.api.java.DataSet;
 
 /**
- * Created by fsander on 08.02.15.
+ * Calculates the current scale factor. See Mahout LanczosSolver.
  */
 public class GetScaleFactor extends AbstractCustomOperation<Element,Double> {
     @Override

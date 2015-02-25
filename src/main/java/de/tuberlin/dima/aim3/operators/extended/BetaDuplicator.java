@@ -6,7 +6,7 @@ import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.util.Collector;
 
 /**
- * Created by fsander on 09.02.15.
+ * Duplicates the beta Elements to form the propert triDiag matrix
  */
 public class BetaDuplicator implements FlatMapFunction<Element,Element> {
     @Override

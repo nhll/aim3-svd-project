@@ -5,7 +5,7 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.DataSet;
 
 /**
- * Created by fsander on 08.02.15.
+ * Sets the row(s) and col(s) of all Elements in the input
  */
 public class SetRowAndCol extends AbstractCustomOperation<Element,Element> {
 

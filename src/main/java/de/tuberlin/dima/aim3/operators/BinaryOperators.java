@@ -9,43 +9,71 @@ import org.apache.flink.api.java.aggregation.Aggregations;
 import org.apache.flink.util.Collector;
 
 /**
- * Created by fsander on 07.02.15.
+ * Operators that take two Datasets as input
  */
 public class BinaryOperators {
 
+    /**
+     * Performs a matrix multiplication, which can also be a matrix-vector multiplication. The result's id is set to the
+     * given id
+     */
     public static DataSet<Element> multiply(DataSet<Element> one, DataSet<Element> two, byte id) {
         return
                 one.join(two).where(Element.COL).equalTo(Element.ROW).with(new MultiplyElements(id))
                         .groupBy(Element.COL, Element.ROW).reduceGroup(new CombineElements());
     }
 
+    /**
+     * Like BinaryOperators.multiply, only that this transposes the first argument first on the fly
+     */
     public static DataSet<Element> multiplySquared(DataSet<Element> one, DataSet<Element> two, byte id) {
         return
                 one.join(two).where(Element.ROW).equalTo(Element.ROW).with(new MultiplyElementsTransposed(id))
                         .groupBy(Element.COL, Element.ROW).reduceGroup(new CombineElements());
     }
 
+    /**
+     * the dot product
+     */
     public static DataSet<Element> dot(DataSet<Element> one, DataSet<Element> two, byte id) {
         return
                 one.join(two).where(Element.ROW).equalTo(Element.ROW).with(new MultiplyElements(id))
                         .aggregate(Aggregations.SUM, Element.VAL);
     }
 
+    /**
+     * Divides all elements in vector with all in scalar. Scalar should contain only one Element!
+     */
     public static DataSet<Element> scalarInverted(DataSet<Element> vector, DataSet<Element> scalar) {
         return vector.cross(scalar.map(e -> e.getVal())).with(new InvertedScalarCross());
     }
 
+    /**
+     * Multiplies all elements in vector with all in scalar. Scalar should contain only one Element!
+     */
     public static DataSet<Element> scalar(DataSet<Element> vector, DataSet<Element> scalar) {
         return vector.cross(scalar.map(e -> e.getVal())).with(new ScalarCross());
     }
 
+    /**
+     * Multiplies all elements in vector with all Double values in scalar. Scalar should contain only one Element!
+     */
     public static DataSet<Element> scalarDouble(DataSet<Element> vector, DataSet<Double> scalar) {
         return vector.cross(scalar).with(new ScalarCross());
     }
 
+    /**
+     * Subtracts all elements in two from the all corresponding elements in one
+     */
     public static DataSet<Element> substract(DataSet<Element> one, DataSet<Element> two) {
         return one.join(two).where(Element.ROW).equalTo(Element.ROW).with(new SubstractJoin());
     }
+
+    /*
+    ####################################################################################################################
+    ####   Auxiliary Classes                                                                                        ####
+    ####################################################################################################################
+     */
 
     private static class MultiplyElements implements JoinFunction<Element, Element, Element> {
 

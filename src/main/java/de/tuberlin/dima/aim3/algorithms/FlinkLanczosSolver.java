@@ -14,7 +14,7 @@ import org.apache.mahout.math.decomposer.lanczos.LanczosSolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class FlinkLanczosSolver extends LanczosSolver {
+public final class FlinkLanczosSolver {
 
     private static final Logger log = LoggerFactory.getLogger(FlinkLanczosSolver.class);
 
@@ -78,10 +78,10 @@ public final class FlinkLanczosSolver extends LanczosSolver {
         /*
             ### initialize iteration ###
          */
-        // the solution set contains elements, that we don't need in an iteration step. For now, this is only the first alpha
-        DataSet<Element> initialSolutionSet = alpha1;
         // the workset contains all the stuff that is needed to proccess on that. That is v_i-1, v_i, and b_i
         DataSet<Element> initialWorkingset = v1.union(v2.union(beta2));
+        // the solution set contains the workset plus elements, that we don't need in an iteration step. For now, this is only the first alpha
+        DataSet<Element> initialSolutionSet = initialWorkingset.union(alpha1);
         DeltaIteration<Element, Element> iteration =
                 initialSolutionSet.iterateDelta(initialWorkingset, desiredRank - 2, Element.ID, Element.ROW, Element.COL);
         /*

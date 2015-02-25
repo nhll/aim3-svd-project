@@ -4,7 +4,7 @@ import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.operators.CustomUnaryOperation;
 
 /**
- * Created by fsander on 07.02.15.
+ * Simple abstract CustomUnaryOperation that unifies the treatment of input data
  */
 public abstract class AbstractCustomOperation<IN, OUT> implements CustomUnaryOperation<IN, OUT> {
 

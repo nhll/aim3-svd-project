@@ -5,7 +5,7 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.DataSet;
 
 /**
- * Created by fsander on 07.02.15.
+ * Takes all input Elements and increases their column by one.
  */
 public class IncrementColumn extends AbstractCustomOperation<Element,Element> {
 
