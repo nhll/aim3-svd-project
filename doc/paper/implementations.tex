@@ -11,6 +11,15 @@ in this section.
 
 \subsection{Delta Iterations}
 
+The code containing the implementation of the delta iteration approach is divided into three packages: \texttt{datatypes}, \texttt{operators} and \texttt{algorithms}. \texttt{Datatypes} contains all necessary structures to represent the data that we need. \texttt{Operators} contains implementations of matrix and vector multiplication and other operations using our datatypes that we need in order to run the Lanczos algorithm. The \texttt{algorithms} package contains our Apache Flink implementation of the Lanczos algorithm. The root package also contains an entry class, \texttt{SVD}, that's purpose was to take an input matrix, run Lanczos on it, and ship the result then to Mahout's Eigendecomposer to perform the actual reduced SVD. The following subsections explain each part of the project in more detail.
+
+\subsubsection{Data Structures}
+As described in section \ref{ssec:lanczos_algorithm} the Lanczos algorithm produces two resulting matrices. In delta iterations however, there is no way of working with two distinct datasets in such a way, because is operates on a single solution set. Therefore we needed to use a data structure to represent a matrix element that is identifiable via a label, so that we can mix the elements of two matrices into a single dataset. Also, delta iterations only support datasets of tuples. Therefore we choose use a \texttt{Tuple4} to represent a single element of a matrix and created a wrapper class called \texttt{Element} with getters for the individual components: a \texttt{byte} id, to identify the elements parent, \texttt{long} row and col for the elements position and a \texttt{double} value. Both, workSet and solutionSet, are then of the type \texttt{DataSet<Element>}.
+
+\subsubsection{Operators}
+
+The \texttt{operators} package is further divided into \texttt{custom} and \texttt{extended} package. The \texttt{custom} package contains custom unary operations that can be run with \texttt{Dataset.runOperation()}. The \texttt{extended} package on the other hand contains implementations of \texttt{Map}-, \texttt{Filter-} or other user defined functions that have to be called with the corresponding method on the dataset. Beyond that the \texttt{operators} package contains a \texttt{BinaryOperators} class, that contains static methods to implement custom operators requiring two input Datasets. Operations like multiplication or subtraction of matrices are defined therein.
+
 
 
 \subsection{Exploiting Mahout's LanczosSolver}
