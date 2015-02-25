@@ -15,11 +15,26 @@ in this section.
 
 \subsection{Exploiting Mahout's LanczosSolver}
 
-As described in section \label{ssec:approach_mahout} the general idea of this approach was to only implement Mahout's \texttt{Vector} and \texttt{Matrix} interfaces with Apache Flink and then call the generic Lanczos implementation with them. Although we are convinced that this approach would work in practice, we decided to discard it. The reason for this is, that some methods of the \texttt{Vector} interface return a flat datatype like the \texttt{dot} method a \texttt{double}. Exactly that method gets used by the \texttt{LanczosSolver} class in line 120 (see listing \ref{lst:l120}).
-\begin{lstlisting}[label=lst:l120,captionpos=b,caption=Line 120 of the \texttt{Lanczos} class]
+As described in section \label{ssec:approach_mahout} the general idea of this
+approach was to only implement Mahout's \texttt{Vector} and \texttt{Matrix}
+interfaces with Apache Flink and then call the generic Lanczos implementation
+with them. Although we are convinced that this approach would work in practice,
+we decided to discard it. The reason for this is, that some methods of the
+\texttt{Vector} interface return a flat datatype like the \texttt{dot} method a
+\texttt{double}. Exactly that method gets used by the \texttt{LanczosSolver}
+class in line 120 (see listing \ref{lst:l120}).
+\begin{lstlisting}[label=lst:l120,captionpos=b,caption=Line 120 of the
+\texttt{Lanczos} class]
 double alpha = currentVector.dot(nextVector);	
 \end{lstlisting}
-Since Apache Flink is a data flow engine, implementing such a method would require to start a job, execute it, materialize it's output to disk, reread the result, parse it and return. This is exactly how the MapReduce binding in Mahout is implemented, too. While this might be not a flaw in the case of MapReduce, since results are materialized after each step anyways, this approach would undermine any advantage Flink has over MapReduce. In fact we would expect that there is little to no difference in using Flink or MapReduce in such a case. For that reason we decided not to pursue this approach.
+Since Apache Flink is a data flow engine, implementing such a method would
+require to start a job, execute it, materialize it's output to disk, reread the
+result, parse it and return. This is exactly how the MapReduce binding in
+Mahout is implemented, too. While this might be not a flaw in the case of
+MapReduce, since results are materialized after each step anyways, this
+approach would undermine any advantage Flink has over MapReduce. In fact we
+would expect that there is little to no difference in using Flink or MapReduce
+in such a case. For that reason we decided not to pursue this approach.
 
 
 % Loop-Based Implementation
@@ -249,6 +264,7 @@ instead, especially for simple operations like filtering a data set by index.
 % -------------------
 
 \subsubsection{Performance Problem}
+\label{ssec:loop_performance_problem}
 
 Unfortunately it wasn't until very late in the implementation phase that we
 encountered a serious problem with the loop-based approach. Up until then we
