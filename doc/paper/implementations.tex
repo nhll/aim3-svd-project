@@ -18,8 +18,26 @@ As described in section \ref{ssec:lanczos_algorithm} the Lanczos algorithm produ
 
 \subsubsection{Operators}
 
-The \texttt{operators} package is further divided into \texttt{custom} and \texttt{extended} package. The \texttt{custom} package contains custom unary operations that can be run with \texttt{Dataset.runOperation()}. The \texttt{extended} package on the other hand contains implementations of \texttt{Map}-, \texttt{Filter-} or other user defined functions that have to be called with the corresponding method on the dataset. Beyond that the \texttt{operators} package contains a \texttt{BinaryOperators} class, that contains static methods to implement custom operators requiring two input Datasets. Operations like multiplication or subtraction of matrices are defined therein.
+First, the \texttt{operators} package is further divided into \texttt{custom} and \texttt{extended} package. The \texttt{custom} package contains custom unary operations that can be run with \texttt{Dataset.runOperation()}. The \texttt{extended} package on the other hand contains implementations of \texttt{Map}-, \texttt{Filter-} or other user defined functions that have to be called with the corresponding method on the dataset. Beyond that the \texttt{operators} package contains a \texttt{BinaryOperators} class, that contains static methods to implement custom operators requiring two input Datasets. Operations like multiplication or subtraction of matrices are defined therein.
 
+Most operators defined in the \texttt{custom} and \texttt{extended} only get clear in detailed context of our Lanczos implementation, so explaining them all here would not only go beyond the limits of this report, it wouldn't even be meaningful for the reader. However, our implementation of the matrix multiplication might be notably:
+
+The matrix multiplication in \texttt{BinaryOperators.multiply} is implemented by using a join. An element from the first matrix gets joined with an element from the second matrix, if the first element's column is equal to the seconds element row. The two elements get multiplied as join function. Further, the joined elements get summed with a \texttt{groupReduce}. The useful implication of this is, that we can automatically optimize our execution for spare matrices by simply removing zero entries. That way, missing zero entries simply dont get a join partner and are filtered out in the first stage, resulting again missing zero entries.
+
+\subsubsection{The algorithm}
+
+Our delta iteration implementation of the Lanczos algorithm is contained in the \texttt{FlinkLanczosSolver} class inside the \texttt{algorithms} package. It follows generally the generic implementation from the Mahout library. The only difference is, that our implementation computes an additional \textit{pre-step} outside of the iteration. The reason for that is, that we circumvent any corner cases in early iteration steps: Each step is depended on the previous two steps. By pre-calculating both, we don't need any special treatment of the first iteration step.
+
+The pre-calculation results in $l_1$, $l_2$, $\beta_2$ and $\alpha_1$. All these values are part of the solution, so all of these go into the initial solutionSet. Also, all of these except $\alpha_1$ are required in the next step, so $l_1$, $l_2$ and $\beta_2$ are the initial workSet. With these each step computes $l_{i+1}$, $\alpha_i$ and $\beta_{i+1}$. All of these values form the solutionSet delta and are to be added to the solutionSet. The new workingSet consists of  $l_{i}$, $l_{i+1}$ and $\beta_{i+1}$. That leads to an iteration plan like depicted in figure~\ref{fig:lanczos_delta_plan}.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[scale=0.3]{images/lanczos_delta_plan.png}
+    \caption{Structure of the Lanczos algorithm with delta iterations}
+	\label{fig:lanczos_delta_plan}
+\end{figure}
+
+However, what is missing here is the orthogonalization. As shown in section~\ref{ssec:lanczos_algorithm} the orthogonalization requires to process all previous $l$ vectors one by one. This would require to create a nested iteration, which is not supported by Apache Flink. Nested iterations are explicitly prohibited by the plan compiler. At that point we stopped to work further on this apporach.
 
 
 \subsection{Exploiting Mahout's LanczosSolver}
