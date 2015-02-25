@@ -81,7 +81,7 @@ So $U$ and $V$ result from the eigendecompositions of $M\times M^T$ and $M^T\tim
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=0.8\textwidth]{images/svd_mmds.png}
-	\caption{Depiction of the SVD of a matrix $M$}
+	\caption{Depiction of the SVD of a matrix $M$ [6]}
 	\label{fig:svd}
 \end{figure}
 
@@ -107,9 +107,10 @@ This is very expensive if even possible for large matrices, especially when cons
          & \ddots   & \ddots   & \beta_k \\
 0        &          & \beta_k  & \alpha_k \\
 \end{pmatrix}
+\caption{blabla}
 \end{align*}
 
-Because $T$ is symmetric and tridiagonal a traditional eigendecomposition of $T$ is very efficient:
+Taking this indirection pays off, because computing the eigendecomposition of $T$ in the traditional way is very efficient:
 
 \begin{align*}
 	Eig(T) = (Q_T,\Lambda_T)
@@ -121,7 +122,7 @@ The eigenvalues of $A$ are then the same as the one of $T$ ($\Lambda_A = \Lambda
 	Q_A = L \times Q_T
 \end{align*}
 
-As the Lanczos algorithm is the only part in this roadmap that operates on the large initial data, this is the most crucial part that needs to be parallelized. The following listing contains a pseudo code variant of the Lanczos algorithm:
+As the Lanczos algorithm is the only part in this roadmap that operates on the large initial data, this is the most crucial part that needs to be parallelized. The following listing contains a pseudo code variant of the Lanczos algorithm taken from [5] and [3]:
 
 \begin{flalign*}
 \texttt{1}\quad &l_1 \leftarrow \, \text{uniformly distributed vector with norm 1} \\
