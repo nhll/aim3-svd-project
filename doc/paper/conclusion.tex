@@ -1,0 +1,16 @@
+\section{Conclusion}
+
+As of Flink version 0.8, a satisfactory solution for implementing the Lanczos
+algorithm doesn't seem to exist yet. The idiomatic approach using delta
+iterations and the loop-based approach are either not possible or not feasible.
+Using Mahout's implementation of the algorithm would mean taking an
+implementation intended to be used specifically with the MapReduce computing
+model and squeezing it into the Flink system. While this approach would
+probably be possible, we feel that it can't be the 'right' way to do it as it
+would undermine many of Flink's individual advantages. Additionally we don't
+expect the workaround of materializing all intermediate data to perform
+significantly better than Mahout running on Hadoop. This project also
+illustrates the current limitations of Apache Flink for implementing iterative
+algorithms. In order to develop an idiomatic, satisfactory implementation of
+the Lanczos algorithm, one currently has to wait for newer Flink versions that
+will support nested iterations.

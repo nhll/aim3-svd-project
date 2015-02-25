@@ -1,0 +1,37 @@
+\section{Results}
+\label{sec:results}
+
+In the course of this project, it turned out that at least two of the three
+approaches we initially identified are currently unfeasible. The idiomatic
+solution using Flink's delta iterations can not be fully implemented, because
+nested iterations, which are required to orthogonalize the Lanczos vectors and
+thus ensure the correctness of the algorithm's results, are not supported yet
+by Flink as of version 0.8.
+
+As described in section \ref{ssec:loop_performance_problem}, the loop-based
+approach we implemented is not feasible in practice due to major performance
+issues. Our explanation for the observed problems is that the Flink compiler
+and/or optimizer is overloaded by the complexity of the execution graph that it
+has to generate or optimize, respectively. The problem here is most likely that
+Flink can't really recognize the iterative nature of the algorithm. Instead,
+before trying to build the execution graph, Flink probably already executes all
+loop iterations in oder to determine, which and how many data sets are needed
+and how the data flows through the program. At one point during the
+investigation of this problem, we looked at a JSON representation of the
+program's execution graph. Even though we only used three Lanczos iterations,
+the representation of the graph consisted of \textit{several thousand} lines
+of JSON. While one single iteration step in our implementation may not seem to
+be that complex, we assume that Flink can't handle the complexity of the full
+data flow that only unfolds during the attempt of compiling the execution
+graph. This explanation seems even more probable considering that the
+orthogonalization in every single iteration step is done in a nested loop that
+iterates over all previously calculated results again, which adds a lot of
+additional complexity to every single iteration.
+
+We had initially discarded the idea of simply using Mahout's implementation of
+the Lanczos algorithm by implementing all the interfaces it uses (see section
+\ref{ssec:approach_mahout}). But as it stands at the end of our project, this
+is the only one of the three identified approaches that could work and be
+feasible in current versions of Flink. Unfortunately, we didn't have enough
+time left to implement this approach as well and to actually test how well it's
+working.
